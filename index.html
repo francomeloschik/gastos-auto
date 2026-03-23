@@ -195,20 +195,33 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           <input type="text" id="f-prov" placeholder="YPF, Shell, Taller...">
         </div>
 
-        <div id="odo-section" style="display:none" class="form-section">
-          <label class="form-label">Odómetro actual (km)</label>
-          <div class="odo-box">
-            <input type="number" id="f-km" placeholder="ej. 280000" inputmode="numeric" oninput="calcParcial()">
-            <div class="odo-hint" id="parcial-hint">Última carga: cargando...</div>
+        <div id="comb-fields" style="display:none">
+          <div class="form-section">
+            <label class="form-label">Precio por litro ($/L)</label>
+            <input type="number" id="f-precio-litro" placeholder="ej. 1750" inputmode="numeric" oninput="calcComb()">
+          </div>
+          <div class="form-section">
+            <label class="form-label">Km recorridos desde última carga (trip)</label>
+            <input type="number" id="f-km-parcial" placeholder="ej. 312" inputmode="numeric" oninput="calcComb()">
+          </div>
+          <div id="comb-calcs" style="display:none;background:rgba(56,189,248,.05);border:0.5px solid rgba(56,189,248,.2);border-radius:10px;padding:12px;margin-bottom:14px;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <div style="text-align:center">
+              <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Litros</div>
+              <div style="font-size:20px;font-weight:600;font-family:'DM Mono',monospace;color:#38bdf8" id="calc-litros">—</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Odómetro</div>
+              <div style="font-size:20px;font-weight:600;font-family:'DM Mono',monospace;color:#38bdf8" id="calc-odo">—</div>
+            </div>
+            <div style="text-align:center">
+              <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Km/litro</div>
+              <div style="font-size:20px;font-weight:600;font-family:'DM Mono',monospace;color:#34d399" id="calc-kml">—</div>
+            </div>
           </div>
         </div>
         <div id="odo-mant-section" style="display:none" class="form-section">
           <label class="form-label">Odómetro (km, opcional)</label>
           <input type="number" id="f-km-mant" placeholder="ej. 280000" inputmode="numeric">
-        </div>
-        <div id="litros-section" style="display:none" class="form-section">
-          <label class="form-label">Litros cargados</label>
-          <input type="number" id="f-litros" placeholder="ej. 40.5" step="0.01" inputmode="decimal">
         </div>
         <div class="form-section">
           <label class="form-label">Notas</label>
@@ -310,22 +323,32 @@ function lastKmComb(){
 function onCatChange(){
   const cat = document.getElementById('f-cat').value;
   const isComb = cat==='Combustible';
-  document.getElementById('odo-section').style.display = isComb?'block':'none';
+  document.getElementById('comb-fields').style.display = isComb?'block':'none';
   document.getElementById('odo-mant-section').style.display = (!isComb&&cat)?'block':'none';
-  document.getElementById('litros-section').style.display = isComb?'block':'none';
-  if(isComb) calcParcial();
+  if(isComb){
+    const lastKm = lastKmComb();
+    const hint = document.getElementById('f-km-parcial');
+    hint.placeholder = lastKm ? `trip del auto (último: ${lastKm.toLocaleString('es-AR')} km)` : 'ej. 312';
+    calcComb();
+  }
 }
 
-function calcParcial(){
-  const kmA = parseInt(document.getElementById('f-km').value)||null;
-  const last = lastKmComb();
-  const hint = document.getElementById('parcial-hint');
-  if(kmA&&last&&kmA>last){
-    hint.textContent = `+${(kmA-last).toLocaleString('es-AR')} km desde última carga (${last.toLocaleString('es-AR')} km)`;
-    hint.style.color = 'var(--success)';
+function calcComb(){
+  const importe = parseFloat(document.getElementById('f-importe').value)||0;
+  const precioL = parseFloat(document.getElementById('f-precio-litro').value)||0;
+  const kmParcial = parseInt(document.getElementById('f-km-parcial').value)||0;
+  const lastKm = lastKmComb()||0;
+  const litros = (precioL>0 && importe>0) ? importe/precioL : 0;
+  const odoActual = lastKm + kmParcial;
+  const kml = (litros>0 && kmParcial>0) ? kmParcial/litros : 0;
+  const box = document.getElementById('comb-calcs');
+  if(importe>0 || precioL>0 || kmParcial>0){
+    box.style.display = 'grid';
+    document.getElementById('calc-litros').textContent = litros>0 ? litros.toFixed(1)+' L' : '—';
+    document.getElementById('calc-odo').textContent = odoActual>0 ? odoActual.toLocaleString('es-AR')+' km' : '—';
+    document.getElementById('calc-kml').textContent = kml>0 ? kml.toFixed(1) : '—';
   } else {
-    hint.textContent = last?`Última carga registrada: ${last.toLocaleString('es-AR')} km`:'Sin cargas previas';
-    hint.style.color = 'var(--accent)';
+    box.style.display = 'none';
   }
 }
 
@@ -337,15 +360,19 @@ async function guardar(){
   const btn=document.getElementById('btn-save');
   btn.textContent='Guardando...'; btn.disabled=true;
   const isComb=cat==='Combustible';
-  const kmRaw=isComb?document.getElementById('f-km').value:document.getElementById('f-km-mant').value;
-  const kmA=kmRaw?parseInt(kmRaw):null;
-  const last=isComb?lastKmComb():null;
+  const precioL = isComb ? (parseFloat(document.getElementById('f-precio-litro').value)||0) : 0;
+  const kmParcialVal = isComb ? (parseInt(document.getElementById('f-km-parcial').value)||0) : 0;
+  const lastKmVal = isComb ? (lastKmComb()||0) : 0;
+  const kmCalculado = isComb && kmParcialVal>0 ? lastKmVal + kmParcialVal : null;
+  const litrosCalculados = isComb && precioL>0 && importe>0 ? importe/precioL : null;
+  const kmMant = !isComb ? (document.getElementById('f-km-mant').value||null) : null;
   const entry={
     id:Date.now(), fecha, importe, cat,
-    km:kmA?String(kmA):null,
-    km_parcial:(isComb&&kmA&&last&&kmA>last)?kmA-last:null,
+    km: kmCalculado ? String(kmCalculado) : (kmMant ? String(parseInt(kmMant)) : null),
+    km_parcial: isComb ? (kmParcialVal||null) : null,
+    precio_litro: isComb ? (precioL||null) : null,
     prov:document.getElementById('f-prov').value||null,
-    litros:isComb?(document.getElementById('f-litros').value||null):null,
+    litros: litrosCalculados ? litrosCalculados.toFixed(2) : null,
     notas:document.getElementById('f-notas').value||null
   };
   gastos.push(entry);
@@ -354,11 +381,11 @@ async function guardar(){
   // Try sync to sheets
   const url=localStorage.getItem('sheets_url');
   if(url){ try{ await pushToSheets(url,[entry]); }catch(e){} }
-  ['f-cat','f-km','f-km-mant','f-litros','f-prov','f-notas'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['f-cat','f-km-mant','f-precio-litro','f-km-parcial','f-prov','f-notas'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('f-importe').value='';
-  document.getElementById('odo-section').style.display='none';
+  document.getElementById('comb-fields').style.display='none';
+  document.getElementById('comb-calcs').style.display='none';
   document.getElementById('odo-mant-section').style.display='none';
-  document.getElementById('litros-section').style.display='none';
   btn.textContent='Guardar gasto'; btn.disabled=false;
   showMsg('✓ Guardado');
   updateHdrKm(); renderInicio(); poblarAnioFilters();
