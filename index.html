@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi Auto">
+<meta name="theme-color" content="#0f172a">
+<title>Gastos del Auto</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #0f172a;
+  --bg2: #1e293b;
+  --bg3: #334155;
+  --card: #1e293b;
+  --border: rgba(148,163,184,0.12);
+  --border2: rgba(148,163,184,0.22);
+  --text: #f1f5f9;
+  --text2: #94a3b8;
+  --text3: #64748b;
+  --accent: #38bdf8;
+  --accent2: #0ea5e9;
+  --success: #34d399;
+  --warn: #fb923c;
+  --danger: #f87171;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font)}
+.app{display:flex;flex-direction:column;height:100vh;height:100dvh;max-width:480px;margin:0 auto;position:relative}
+
+/* TOP HEADER */
+.header{padding:env(safe-area-inset-top,0) 20px 0;background:var(--bg);border-bottom:0.5px solid var(--border)}
+.header-inner{display:flex;align-items:center;justify-content:space-between;padding:14px 0 12px}
+.header h1{font-size:18px;font-weight:600;letter-spacing:-0.3px}
+.header-km{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text2);font-family:var(--mono)}
+.km-dot{width:7px;height:7px;border-radius:50%;background:var(--success);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-btn{background:none;border:0.5px solid var(--border2);border-radius:var(--radius-sm);padding:5px 10px;color:var(--text2);font-size:12px;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:5px}
+.sync-btn:active{background:var(--bg3)}
+
+/* SCROLL AREA */
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;padding:16px 20px 100px}
+
+/* BOTTOM NAV */
+.nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;background:var(--bg);border-top:0.5px solid var(--border);padding:8px 20px env(safe-area-inset-bottom,8px);display:flex;justify-content:space-around;z-index:100}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 16px;border-radius:var(--radius-sm);cursor:pointer;transition:all .15s;border:none;background:none;color:var(--text3);font-family:var(--font)}
+.nav-item.active{color:var(--accent)}
+.nav-icon{font-size:20px;line-height:1}
+.nav-label{font-size:10px;letter-spacing:.3px;font-weight:500}
+
+/* PANELS */
+.panel{display:none}.panel.active{display:block}
+
+/* CARDS */
+.card{background:var(--card);border:0.5px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px}
+.card-title{font-size:11px;color:var(--text3);font-weight:500;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+
+/* KPI GRID */
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.kpi{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+.kpi-label{font-size:11px;color:var(--text3);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em}
+.kpi-value{font-size:22px;font-weight:600;letter-spacing:-0.5px;font-family:var(--mono)}
+.kpi-sub{font-size:11px;color:var(--text2);margin-top:2px}
+.kpi.accent{border-color:rgba(56,189,248,.25);background:rgba(56,189,248,.06)}
+.kpi.accent .kpi-value{color:var(--accent)}
+
+/* FORM */
+.form-section{margin-bottom:14px}
+.form-label{font-size:12px;color:var(--text2);margin-bottom:6px;display:block;font-weight:500}
+input,select,textarea{
+  width:100%;background:var(--bg2);border:0.5px solid var(--border2);border-radius:var(--radius-sm);
+  color:var(--text);font-family:var(--font);font-size:15px;padding:11px 13px;
+  -webkit-appearance:none;appearance:none;outline:none;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(56,189,248,.15)}
+textarea{resize:none;min-height:72px;line-height:1.5}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%2394a3b8'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.odo-box{background:rgba(56,189,248,.05);border:0.5px solid rgba(56,189,248,.2);border-radius:var(--radius-sm);padding:12px;margin-top:4px}
+.odo-hint{font-size:11px;color:var(--accent);margin-top:6px;font-family:var(--mono)}
+
+.btn-save{
+  width:100%;padding:14px;background:var(--accent2);border:none;border-radius:var(--radius);
+  color:#fff;font-size:16px;font-weight:600;cursor:pointer;font-family:var(--font);
+  transition:all .15s;margin-top:4px;
+}
+.btn-save:active{transform:scale(.98);background:var(--accent)}
+
+/* ENTRIES */
+.entry{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:0.5px solid var(--border)}
+.entry:last-child{border-bottom:none}
+.cat-pill{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.entry-info{flex:1;min-width:0}
+.entry-title{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry-sub{font-size:11px;color:var(--text2);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry-right{text-align:right;flex-shrink:0}
+.entry-amount{font-size:15px;font-weight:600;font-family:var(--mono)}
+.entry-del{font-size:11px;color:var(--text3);cursor:pointer;margin-top:2px;background:none;border:none;font-family:var(--font);padding:0}
+.entry-del:active{color:var(--danger)}
+
+/* FILTERS */
+.filters{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.filter-chip{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid var(--border2);background:none;color:var(--text2);white-space:nowrap;font-family:var(--font);flex-shrink:0}
+.filter-chip.active{background:var(--accent2);color:#fff;border-color:var(--accent2)}
+
+/* CHARTS */
+.chart-wrap{position:relative;width:100%}
+
+/* SYNC MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:flex-end}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border-radius:var(--radius) var(--radius) 0 0;padding:24px 20px env(safe-area-inset-bottom,24px);width:100%;max-width:480px;margin:0 auto}
+.modal h3{font-size:17px;font-weight:600;margin-bottom:16px}
+.modal-btn{width:100%;padding:13px;border-radius:var(--radius-sm);font-size:15px;font-weight:500;cursor:pointer;font-family:var(--font);margin-bottom:10px;border:none}
+.btn-export{background:var(--bg3);color:var(--text)}
+.btn-import{background:var(--bg3);color:var(--text)}
+.btn-sheets{background:linear-gradient(135deg,#1a73e8,#0d47a1);color:#fff}
+.btn-close{background:none;border:0.5px solid var(--border2);color:var(--text2);width:100%;padding:11px;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font);font-size:14px}
+.sheets-input{margin:10px 0;font-size:13px}
+.sheets-input input{font-size:13px;padding:9px 12px}
+.sheets-note{font-size:11px;color:var(--text3);line-height:1.6;margin-top:8px}
+.status-bar{font-size:12px;padding:8px 12px;border-radius:var(--radius-sm);margin-top:8px;text-align:center}
+.status-ok{background:rgba(52,211,153,.1);color:var(--success)}
+.status-err{background:rgba(248,113,113,.1);color:var(--danger)}
+
+.empty{text-align:center;padding:40px 20px;color:var(--text3);font-size:14px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-inner">
+      <h1>🚗 Mi Auto</h1>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="header-km"><span class="km-dot"></span><span id="hdr-km">—</span> km</div>
+        <button class="sync-btn" onclick="openModal()">⟳ Sync</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="scroll" id="scroll-area">
+
+    <!-- INICIO -->
+    <div id="panel-inicio" class="panel active">
+      <div class="kpi-grid" id="kpi-grid"></div>
+      <div class="card">
+        <div class="card-title">Últimos gastos</div>
+        <div id="recent-list"></div>
+      </div>
+    </div>
+
+    <!-- NUEVO -->
+    <div id="panel-nuevo" class="panel">
+      <div class="card">
+        <div class="form-section">
+          <label class="form-label">Categoría</label>
+          <select id="f-cat" onchange="onCatChange()">
+            <option value="">Seleccionar...</option>
+            <option value="Combustible">⛽ Combustible</option>
+            <option value="Filtros y aceite">🔧 Filtros y aceite</option>
+            <option value="Neumáticos">🔄 Neumáticos</option>
+            <option value="Frenos">🛑 Frenos</option>
+            <option value="Correas">⚙️ Correas</option>
+            <option value="Suspensión y dirección">🔩 Suspensión y dirección</option>
+            <option value="Motor y turbo">💨 Motor y turbo</option>
+            <option value="Eléctrico">⚡ Eléctrico</option>
+            <option value="Carrocería y estética">🎨 Carrocería y estética</option>
+            <option value="Seguro / VTV">📋 Seguro / VTV</option>
+            <option value="Peajes y estacionamiento">🅿️ Peajes y estacionamiento</option>
+            <option value="Otros">📦 Otros</option>
+          </select>
+        </div>
+        <div class="form-row form-section">
+          <div>
+            <label class="form-label">Fecha</label>
+            <input type="date" id="f-fecha">
+          </div>
+          <div>
+            <label class="form-label">Importe ($)</label>
+            <input type="number" id="f-importe" placeholder="0" inputmode="numeric">
+          </div>
+        </div>
+        <div class="form-section">
+          <label class="form-label">Proveedor / Taller</label>
+          <input type="text" id="f-prov" placeholder="YPF, Shell, Taller...">
+        </div>
+
+        <div id="odo-section" style="display:none" class="form-section">
+          <label class="form-label">Odómetro actual (km)</label>
+          <div class="odo-box">
+            <input type="number" id="f-km" placeholder="ej. 280000" inputmode="numeric" oninput="calcParcial()">
+            <div class="odo-hint" id="parcial-hint">Última carga: cargando...</div>
+          </div>
+        </div>
+        <div id="odo-mant-section" style="display:none" class="form-section">
+          <label class="form-label">Odómetro (km, opcional)</label>
+          <input type="number" id="f-km-mant" placeholder="ej. 280000" inputmode="numeric">
+        </div>
+        <div id="litros-section" style="display:none" class="form-section">
+          <label class="form-label">Litros cargados</label>
+          <input type="number" id="f-litros" placeholder="ej. 40.5" step="0.01" inputmode="decimal">
+        </div>
+        <div class="form-section">
+          <label class="form-label">Notas</label>
+          <textarea id="f-notas" placeholder="Descripción del trabajo o repuesto..."></textarea>
+        </div>
+        <button class="btn-save" onclick="guardar()" id="btn-save">Guardar gasto</button>
+        <div id="msg" style="font-size:13px;text-align:center;margin-top:10px;min-height:18px"></div>
+      </div>
+    </div>
+
+    <!-- HISTORIAL -->
+    <div id="panel-historial" class="panel">
+      <div class="filters" id="anio-filters"></div>
+      <div id="hist-metrics" class="kpi-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px"></div>
+      <div class="card" id="hist-list"></div>
+    </div>
+
+    <!-- GRÁFICOS -->
+    <div id="panel-graficos" class="panel">
+      <div class="card">
+        <div class="card-title">Por categoría — total histórico</div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chart-donut"></canvas></div>
+        <div id="legend-donut" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Gasto mensual total</div>
+        <div class="chart-wrap" style="height:180px"><canvas id="chart-mes"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Combustible — costo por km</div>
+        <div class="chart-wrap" style="height:160px"><canvas id="chart-cxkm"></canvas></div>
+      </div>
+    </div>
+
+  </div><!-- /scroll -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="nav">
+    <button class="nav-item active" onclick="showTab('inicio',0)"><span class="nav-icon">🏠</span><span class="nav-label">Inicio</span></button>
+    <button class="nav-item" onclick="showTab('nuevo',1)"><span class="nav-icon">＋</span><span class="nav-label">Nuevo</span></button>
+    <button class="nav-item" onclick="showTab('historial',2)"><span class="nav-icon">📋</span><span class="nav-label">Historial</span></button>
+    <button class="nav-item" onclick="showTab('graficos',3)"><span class="nav-icon">📊</span><span class="nav-label">Gráficos</span></button>
+  </nav>
+</div>
+
+<!-- SYNC MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <h3>Sincronización de datos</h3>
+    <button class="modal-btn btn-export" onclick="exportJSON()">📤 Exportar datos (JSON)</button>
+    <button class="modal-btn btn-import" onclick="document.getElementById('file-import').click()">📥 Importar datos (JSON)</button>
+    <input type="file" id="file-import" accept=".json" style="display:none" onchange="importJSON(event)">
+    <hr style="border-color:var(--border);margin:14px 0">
+    <div style="font-size:13px;color:var(--text2);margin-bottom:10px;font-weight:500">Google Sheets (sincronización automática)</div>
+    <div class="sheets-input">
+      <label class="form-label" style="margin-bottom:6px">URL del Apps Script Web App</label>
+      <input type="url" id="sheets-url" placeholder="https://script.google.com/macros/s/..." style="font-size:13px">
+    </div>
+    <button class="modal-btn btn-sheets" onclick="syncSheets()">🔄 Sincronizar con Google Sheets</button>
+    <div id="sync-status"></div>
+    <div class="sheets-note">Para configurar: abrí Google Sheets → Extensiones → Apps Script → pegá el código del README → Implementar como app web.</div>
+    <button class="btn-close" onclick="closeModal()">Cerrar</button>
+  </div>
+</div>
+
+<script>
+const HIST = [{"id":1000057,"fecha":"2026-03-13","importe":40000.0,"cat":"Combustible","km":"279550","prov":null,"litros":"21.67","notas":null},{"id":1000056,"fecha":"2026-03-06","importe":40000.0,"cat":"Combustible","km":"279208","prov":"YPF","litros":"22.92","notas":null},{"id":1000055,"fecha":"2026-02-25","importe":40000.0,"cat":"Combustible","km":"278969","prov":"YPF","litros":"23.61","notas":null},{"id":1000054,"fecha":"2026-02-17","importe":40000.0,"cat":"Combustible","km":"278675","prov":"YPF","litros":"23.85","notas":null},{"id":1000053,"fecha":"2026-02-07","importe":40000.0,"cat":"Combustible","km":"278613","prov":"YPF","litros":"24.2","notas":null},{"id":1000080,"fecha":"2026-02-03","importe":442500.0,"cat":"Frenos","km":null,"prov":null,"litros":null,"notas":"Rotula del alternador ( conexion a PoliV)-colector-autom\u00e1tico arranque-discos y pastillas traseras + mano de obra"},{"id":1000052,"fecha":"2025-12-30","importe":70000.0,"cat":"Combustible","km":"277863","prov":"YPF","litros":"43.24","notas":null},{"id":1000079,"fecha":"2025-12-19","importe":130000.0,"cat":"El\u00e9ctrico","km":null,"prov":null,"litros":null,"notas":"Burro de arranque (repuestos + mano de obra)"},{"id":1000051,"fecha":"2025-12-12","importe":76750.0,"cat":"Combustible","km":"276782","prov":"YPF","litros":"47.41","notas":null},{"id":1000050,"fecha":"2025-12-01","importe":14000.0,"cat":"Combustible","km":"276222","prov":"YPF","litros":"12.72","notas":null},{"id":1000049,"fecha":"2025-11-14","importe":72000.0,"cat":"Combustible","km":"275835","prov":"YPF","litros":"48.88","notas":null},{"id":1000048,"fecha":"2025-10-29","importe":42500.0,"cat":"Combustible","km":"275292","prov":"YPF","litros":"35.56","notas":null},{"id":1000047,"fecha":"2025-10-06","importe":65000.0,"cat":"Combustible","km":"275017","prov":"YPF","litros":"46.63","notas":null},{"id":1000046,"fecha":"2025-09-27","importe":30000.0,"cat":"Combustible","km":"274530","prov":"YPF","litros":"21.9","notas":null},{"id":1000045,"fecha":"2025-09-05","importe":64200.0,"cat":"Combustible","km":"274202","prov":"YPF","litros":"47.77","notas":null},{"id":1000044,"fecha":"2025-08-21","importe":40000.0,"cat":"Combustible","km":"273932","prov":"YPF","litros":"30.49","notas":null},{"id":1000043,"fecha":"2025-08-11","importe":30000.0,"cat":"Combustible","km":"273692","prov":"YPF","litros":"23.33","notas":null},{"id":1000042,"fecha":"2025-08-02","importe":30000.0,"cat":"Combustible","km":"273392","prov":"SHELL","litros":"21.65","notas":null},{"id":1000041,"fecha":"2025-07-27","importe":30000.0,"cat":"Combustible","km":"273179","prov":"YPF","litros":"23.89","notas":null},{"id":1000078,"fecha":"2025-07-25","importe":57500.0,"cat":"Filtros y aceite","km":"273100","prov":null,"litros":null,"notas":"Filtros de aire, aceite y gasoil"},{"id":1000077,"fecha":"2025-07-21","importe":60000.0,"cat":"Filtros y aceite","km":"273000","prov":null,"litros":null,"notas":"Aceite 5 w40 Mannol"},{"id":1000040,"fecha":"2025-07-18","importe":30000.0,"cat":"Combustible","km":"272929","prov":"YPF","litros":"23.92","notas":null},{"id":1000039,"fecha":"2025-07-07","importe":30000.0,"cat":"Combustible","km":"272674","prov":"YPF","litros":"24.49","notas":null},{"id":1000038,"fecha":"2025-06-26","importe":30000.0,"cat":"Combustible","km":"272377","prov":"YPF","litros":"25.1","notas":null},{"id":1000037,"fecha":"2025-06-18","importe":30000.0,"cat":"Combustible","km":"272122","prov":"YPF","litros":"25.1","notas":null},{"id":1000036,"fecha":"2025-06-10","importe":30000.0,"cat":"Combustible","km":"271877","prov":"YPF","litros":"24.69","notas":null},{"id":1000076,"fecha":"2025-06-09","importe":200000.0,"cat":"Motor y turbo","km":"271877","prov":null,"litros":null,"notas":"Limpieza sensor maf,intercooler, admision,egr,turbo.Cambio recipiente de refrigerante"},{"id":1000035,"fecha":"2025-05-24","importe":30000.0,"cat":"Combustible","km":"271738","prov":"SHELL","litros":"24.98","notas":null},{"id":1000075,"fecha":"2025-05-23","importe":455000.0,"cat":"Suspensi\u00f3n y direcci\u00f3n","km":"271738","prov":null,"litros":null,"notas":"Bieletas +parrilla de suspension completa"},{"id":1000034,"fecha":"2025-05-16","importe":30000.0,"cat":"Combustible","km":"271454","prov":"YPF","litros":"25.38","notas":null},{"id":1000033,"fecha":"2025-05-08","importe":30000.0,"cat":"Combustible","km":"271163","prov":"YPF","litros":"25.49","notas":null},{"id":1000032,"fecha":"2025-04-30","importe":15000.0,"cat":"Combustible","km":"271040","prov":"YPF","litros":"12.35","notas":null},{"id":1000031,"fecha":"2025-04-11","importe":26000.0,"cat":"Combustible","km":"270681","prov":"YPF","litros":"20.38","notas":null},{"id":1000030,"fecha":"2025-04-04","importe":26000.0,"cat":"Combustible","km":"270534","prov":"YPF","litros":"20.38","notas":null},{"id":1000029,"fecha":"2025-03-21","importe":26000.0,"cat":"Combustible","km":"270333","prov":"YPF","litros":"20.73","notas":null},{"id":1000028,"fecha":"2025-03-14","importe":26000.0,"cat":"Combustible","km":"270100","prov":"YPF","litros":"20.73","notas":null},{"id":1000027,"fecha":"2025-03-07","importe":26000.0,"cat":"Combustible","km":"269934","prov":"YPF","litros":"20.73","notas":null},{"id":1000026,"fecha":"2025-03-02","importe":25000.0,"cat":"Combustible","km":"269703","prov":"SHELL","litros":"20.24","notas":null},{"id":1000025,"fecha":"2025-02-16","importe":64000.0,"cat":"Combustible","km":"269173","prov":"YPF","litros":"45.07","notas":null},{"id":1000072,"fecha":"2025-02-14","importe":24100.0,"cat":"Motor y turbo","km":"269124","prov":null,"litros":null,"notas":"Limpiainyectores liqui Moly"},{"id":1000073,"fecha":"2025-02-14","importe":75000.0,"cat":"Suspensi\u00f3n y direcci\u00f3n","km":"269124","prov":null,"litros":null,"notas":"Rotula izquierda delantera+mano de obra+ alineaci\u00f3n"},{"id":1000074,"fecha":"2025-02-14","importe":150000.0,"cat":"Neum\u00e1ticos","km":"269124","prov":null,"litros":null,"notas":"Cubierta+balanceo"},{"id":1000024,"fecha":"2025-02-10","importe":20000.0,"cat":"Combustible","km":"269124","prov":"YPF","litros":"17.09","notas":null},{"id":1000023,"fecha":"2025-02-02","importe":30000.0,"cat":"Combustible","km":"268800","prov":"SHELL","litros":"24.31","notas":null},{"id":1000071,"fecha":"2025-02-02","importe":71600.0,"cat":"Motor y turbo","km":"268500","prov":null,"litros":null,"notas":"Mano de obra electro y cambio de orrings turbo"},{"id":1000022,"fecha":"2025-01-26","importe":25000.0,"cat":"Combustible","km":"268086","prov":"YPF","litros":"21.8","notas":null},{"id":1000069,"fecha":"2025-01-23","importe":13500.0,"cat":"Motor y turbo","km":"267826","prov":null,"litros":null,"notas":"Orrings turbo negros"},{"id":1000070,"fecha":"2025-01-23","importe":68400.0,"cat":"El\u00e9ctrico","km":"267826","prov":null,"litros":null,"notas":"Electro aire acondicionado"},{"id":1000021,"fecha":"2025-01-21","importe":30000.0,"cat":"Combustible","km":"267826","prov":"YPF","litros":"26.16","notas":null},{"id":1000020,"fecha":"2024-11-27","importe":30000.0,"cat":"Combustible","km":"267591","prov":"YPF","litros":"22.34","notas":null},{"id":1000068,"fecha":"2024-11-24","importe":12500.0,"cat":"Carrocer\u00eda y est\u00e9tica","km":"267525","prov":null,"litros":null,"notas":"Rejilla delantera derecha (plastico)"},{"id":1000019,"fecha":"2024-11-13","importe":10000.0,"cat":"Combustible","km":"267295","prov":"SHELL","litros":"8.69","notas":null},{"id":1000067,"fecha":"2024-11-12","importe":130000.0,"cat":"Neum\u00e1ticos","km":"267250","prov":null,"litros":null,"notas":"Compra cubierta delantera"},{"id":1000018,"fecha":"2024-11-08","importe":36000.0,"cat":"Combustible","km":"267173","prov":"YPF","litros":"29.78","notas":null},{"id":1000017,"fecha":"2024-11-01","importe":25000.0,"cat":"Combustible","km":"266913","prov":"YPF","litros":"22.58","notas":null},{"id":1000066,"fecha":"2024-10-25","importe":20000.0,"cat":"El\u00e9ctrico","km":"266750","prov":null,"litros":null,"notas":"Cambio luces delanteras"},{"id":1000016,"fecha":"2024-10-23","importe":20000.0,"cat":"Combustible","km":"266729","prov":"YPF","litros":"18.57","notas":null},{"id":1000015,"fecha":"2024-10-13","importe":25000.0,"cat":"Combustible","km":"266488","prov":"YPF","litros":"23.21","notas":null},{"id":1000014,"fecha":"2024-09-27","importe":25500.0,"cat":"Combustible","km":"266211","prov":"YPF","litros":"22.49","notas":null},{"id":1000013,"fecha":"2024-09-18","importe":20000.0,"cat":"Combustible","km":"266026","prov":"SHELL","litros":"17.62","notas":null},{"id":1000012,"fecha":"2024-09-13","importe":20000.0,"cat":"Combustible","km":"265836","prov":"YPF","litros":"18.2","notas":null},{"id":1000011,"fecha":"2024-09-05","importe":20000.0,"cat":"Combustible","km":"265553","prov":"YPF","litros":"18.2","notas":null},{"id":1000010,"fecha":"2024-08-28","importe":25500.0,"cat":"Combustible","km":"265274","prov":"YPF","litros":"22.26","notas":null},{"id":1000064,"fecha":"2024-08-23","importe":80000.0,"cat":"Frenos","km":"265110","prov":null,"litros":null,"notas":"Cambio  extremos, precap, rotulas, fuelle cremallera y pastilas de freno"},{"id":1000065,"fecha":"2024-08-23","importe":50000.0,"cat":"Otros","km":"265110","prov":null,"litros":null,"notas":"mano de obra de anterior"},{"id":1000009,"fecha":"2024-08-11","importe":20000.0,"cat":"Combustible","km":"265038","prov":"SHELL","litros":"17.67","notas":null},{"id":1000008,"fecha":"2024-08-06","importe":25000.0,"cat":"Combustible","km":"264900","prov":"SHELL","litros":"21.93","notas":null},{"id":1000063,"fecha":"2024-07-24","importe":10800.0,"cat":"Carrocer\u00eda y est\u00e9tica","km":"264490","prov":null,"litros":null,"notas":"Cambio escobillas de limpiaparabrisas"},{"id":1000007,"fecha":"2024-07-23","importe":15000.0,"cat":"Combustible","km":"264530","prov":"SHELL","litros":"13.65","notas":null},{"id":1000006,"fecha":"2024-07-20","importe":25000.0,"cat":"Combustible","km":"264476","prov":"SHELL","litros":"22.58","notas":null},{"id":1000005,"fecha":"2024-07-02","importe":20000.0,"cat":"Combustible","km":"264324","prov":"YPF","litros":"19.1","notas":null},{"id":1000062,"fecha":"2024-06-25","importe":50000.0,"cat":"Correas","km":"264200","prov":null,"litros":null,"notas":"Mano de obra cambio correa y tensor"},{"id":1000004,"fecha":"2024-06-19","importe":18000.0,"cat":"Combustible","km":"264168","prov":"SHELL","litros":"15.28","notas":null},{"id":1000061,"fecha":"2024-06-18","importe":169000.0,"cat":"Correas","km":"264168","prov":null,"litros":null,"notas":"Cambio correa poli V y tensor"},{"id":1000003,"fecha":"2024-06-05","importe":20000.0,"cat":"Combustible","km":"263956","prov":"YPF","litros":"19.1","notas":null},{"id":1000002,"fecha":"2024-05-30","importe":10000.0,"cat":"Combustible","km":"263825","prov":"YPF","litros":"9.79","notas":null},{"id":1000001,"fecha":"2024-05-22","importe":20000.0,"cat":"Combustible","km":"263450","prov":"YPF","litros":"19.59","notas":null},{"id":1000060,"fecha":"2024-05-21","importe":50000.0,"cat":"Carrocer\u00eda y est\u00e9tica","km":"263515","prov":null,"litros":null,"notas":"Retapizado puertas delanteras"},{"id":1000059,"fecha":"2024-05-15","importe":95000.0,"cat":"El\u00e9ctrico","km":"263500","prov":null,"litros":null,"notas":"Cambio bateria-12-75"},{"id":1000058,"fecha":"2024-05-04","importe":94000.0,"cat":"Filtros y aceite","km":"263400","prov":null,"litros":null,"notas":"Cambio filtros aire, diesel, aceite, polen-cambio de aceite"},{"id":1000000,"fecha":"2024-04-27","importe":10000.0,"cat":"Combustible","km":"263400","prov":"YPF","litros":"9.79","notas":null}];
+const CC = {'Combustible':'#38bdf8','Filtros y aceite':'#34d399','Neumáticos':'#fb923c','Frenos':'#f87171','Correas':'#e879f9','Suspensión y dirección':'#fb923c','Motor y turbo':'#a78bfa','Eléctrico':'#86efac','Carrocería y estética':'#67e8f9','Seguro / VTV':'#fbbf24','Peajes y estacionamiento':'#94a3b8','Otros':'#64748b'};
+const ICONS = {'Combustible':'⛽','Filtros y aceite':'🔧','Neumáticos':'🔄','Frenos':'🛑','Correas':'⚙️','Suspensión y dirección':'🔩','Motor y turbo':'💨','Eléctrico':'⚡','Carrocería y estética':'🎨','Seguro / VTV':'📋','Peajes y estacionamiento':'🅿️','Otros':'📦'};
+
+let gastos=[], charts={};
+const LS_KEY='gastos_auto_v3';
+
+function save(){ localStorage.setItem(LS_KEY, JSON.stringify(gastos)); }
+
+function load(){
+  try{
+    const stored = JSON.parse(localStorage.getItem(LS_KEY)||'[]');
+    const ids = new Set(stored.map(g=>g.id));
+    const toAdd = HIST.filter(g=>!ids.has(g.id));
+    gastos = [...stored,...toAdd].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+    save();
+  }catch(e){ gastos=[...HIST]; }
+  document.getElementById('f-fecha').value = new Date().toISOString().slice(0,10);
+  updateHdrKm();
+  renderInicio(); poblarAnioFilters();
+}
+
+function updateHdrKm(){
+  const last = gastos.filter(g=>g.cat==='Combustible'&&g.km).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+  document.getElementById('hdr-km').textContent = last ? parseInt(last.km).toLocaleString('es-AR') : '—';
+}
+
+function lastKmComb(){
+  const c = gastos.filter(g=>g.cat==='Combustible'&&g.km).sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  return c.length ? parseInt(c[0].km) : null;
+}
+
+function onCatChange(){
+  const cat = document.getElementById('f-cat').value;
+  const isComb = cat==='Combustible';
+  document.getElementById('odo-section').style.display = isComb?'block':'none';
+  document.getElementById('odo-mant-section').style.display = (!isComb&&cat)?'block':'none';
+  document.getElementById('litros-section').style.display = isComb?'block':'none';
+  if(isComb) calcParcial();
+}
+
+function calcParcial(){
+  const kmA = parseInt(document.getElementById('f-km').value)||null;
+  const last = lastKmComb();
+  const hint = document.getElementById('parcial-hint');
+  if(kmA&&last&&kmA>last){
+    hint.textContent = `+${(kmA-last).toLocaleString('es-AR')} km desde última carga (${last.toLocaleString('es-AR')} km)`;
+    hint.style.color = 'var(--success)';
+  } else {
+    hint.textContent = last?`Última carga registrada: ${last.toLocaleString('es-AR')} km`:'Sin cargas previas';
+    hint.style.color = 'var(--accent)';
+  }
+}
+
+async function guardar(){
+  const fecha=document.getElementById('f-fecha').value;
+  const importe=parseFloat(document.getElementById('f-importe').value);
+  const cat=document.getElementById('f-cat').value;
+  if(!fecha||!importe||!cat){ showMsg('Completá categoría, fecha e importe',true); return; }
+  const btn=document.getElementById('btn-save');
+  btn.textContent='Guardando...'; btn.disabled=true;
+  const isComb=cat==='Combustible';
+  const kmRaw=isComb?document.getElementById('f-km').value:document.getElementById('f-km-mant').value;
+  const kmA=kmRaw?parseInt(kmRaw):null;
+  const last=isComb?lastKmComb():null;
+  const entry={
+    id:Date.now(), fecha, importe, cat,
+    km:kmA?String(kmA):null,
+    km_parcial:(isComb&&kmA&&last&&kmA>last)?kmA-last:null,
+    prov:document.getElementById('f-prov').value||null,
+    litros:isComb?(document.getElementById('f-litros').value||null):null,
+    notas:document.getElementById('f-notas').value||null
+  };
+  gastos.push(entry);
+  gastos.sort((a,b)=>b.fecha.localeCompare(a.fecha));
+  save();
+  // Try sync to sheets
+  const url=localStorage.getItem('sheets_url');
+  if(url){ try{ await pushToSheets(url,[entry]); }catch(e){} }
+  ['f-cat','f-km','f-km-mant','f-litros','f-prov','f-notas'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('f-importe').value='';
+  document.getElementById('odo-section').style.display='none';
+  document.getElementById('odo-mant-section').style.display='none';
+  document.getElementById('litros-section').style.display='none';
+  btn.textContent='Guardar gasto'; btn.disabled=false;
+  showMsg('✓ Guardado');
+  updateHdrKm(); renderInicio(); poblarAnioFilters();
+  setTimeout(()=>showTab('inicio',0),800);
+}
+
+function showMsg(t,err=false){
+  const m=document.getElementById('msg');
+  m.textContent=t; m.style.color=err?'var(--danger)':'var(--success)';
+  setTimeout(()=>m.textContent='',2500);
+}
+
+async function eliminar(id){
+  gastos=gastos.filter(g=>g.id!==id);
+  save(); updateHdrKm(); renderInicio(); renderHistorial(); poblarAnioFilters();
+}
+
+// ---- RENDER ----
+function fmt(n){ return '$'+Math.round(n).toLocaleString('es-AR'); }
+function fmtKm(k){ return parseInt(k).toLocaleString('es-AR')+' km'; }
+
+function renderInicio(){
+  const total=gastos.reduce((s,g)=>s+g.importe,0);
+  const totalC=gastos.filter(g=>g.cat==='Combustible').reduce((s,g)=>s+g.importe,0);
+  const totalM=gastos.filter(g=>g.cat!=='Combustible').reduce((s,g)=>s+g.importe,0);
+  const meses=[...new Set(gastos.map(g=>g.fecha.slice(0,7)))];
+  const prom=meses.length?total/meses.length:0;
+  const lastKm=lastKmComb();
+  document.getElementById('kpi-grid').innerHTML=`
+    <div class="kpi accent"><div class="kpi-label">Total gastado</div><div class="kpi-value">${fmt(total)}</div><div class="kpi-sub">desde abr 2024</div></div>
+    <div class="kpi"><div class="kpi-label">Prom. mensual</div><div class="kpi-value">${fmt(prom)}</div><div class="kpi-sub">${meses.length} meses</div></div>
+    <div class="kpi"><div class="kpi-label">Combustible</div><div class="kpi-value" style="font-size:18px">${fmt(totalC)}</div><div class="kpi-sub">${Math.round(totalC/total*100)}% del total</div></div>
+    <div class="kpi"><div class="kpi-label">Mantenimiento</div><div class="kpi-value" style="font-size:18px">${fmt(totalM)}</div><div class="kpi-sub">${Math.round(totalM/total*100)}% del total</div></div>
+  `;
+  const recent=gastos.slice(0,8);
+  document.getElementById('recent-list').innerHTML=recent.map(g=>entryHTML(g,false)).join('');
+}
+
+function entryHTML(g,showDel=true){
+  const col=CC[g.cat]||'#64748b';
+  const icon=ICONS[g.cat]||'📦';
+  const fecha=new Date(g.fecha+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'short'});
+  const sub=[g.prov,g.km?fmtKm(g.km):'',g.km_parcial?`+${g.km_parcial.toLocaleString('es-AR')} km`:'',g.litros?parseFloat(g.litros).toFixed(1)+'L':''].filter(Boolean).join(' · ');
+  return `<div class="entry">
+    <div class="cat-pill" style="background:${col}22">${icon}</div>
+    <div class="entry-info">
+      <div class="entry-title">${g.cat}</div>
+      <div class="entry-sub">${fecha}${sub?' · '+sub:''}</div>
+    </div>
+    <div class="entry-right">
+      <div class="entry-amount" style="color:${col}">${fmt(g.importe)}</div>
+      ${showDel?`<button class="entry-del" onclick="eliminar(${g.id})">eliminar</button>`:''}
+    </div>
+  </div>`;
+}
+
+let filtroAnio='';
+function poblarAnioFilters(){
+  const anios=[...new Set(gastos.map(g=>g.fecha.slice(0,4)))].sort().reverse();
+  document.getElementById('anio-filters').innerHTML=
+    `<button class="filter-chip ${!filtroAnio?'active':''}" onclick="setAnio('')">Todos</button>`+
+    anios.map(a=>`<button class="filter-chip ${filtroAnio===a?'active':''}" onclick="setAnio('${a}')">${a}</button>`).join('');
+}
+function setAnio(a){ filtroAnio=a; poblarAnioFilters(); renderHistorial(); }
+
+function renderHistorial(){
+  const datos=gastos.filter(g=>!filtroAnio||g.fecha.startsWith(filtroAnio));
+  const total=datos.reduce((s,g)=>s+g.importe,0);
+  const mU=[...new Set(datos.map(g=>g.fecha.slice(0,7)))];
+  const prom=mU.length?total/mU.length:0;
+  document.getElementById('hist-metrics').innerHTML=`
+    <div class="kpi"><div class="kpi-label">Total</div><div class="kpi-value" style="font-size:16px">${fmt(total)}</div></div>
+    <div class="kpi"><div class="kpi-label">Prom/mes</div><div class="kpi-value" style="font-size:16px">${fmt(prom)}</div></div>
+    <div class="kpi"><div class="kpi-label">Registros</div><div class="kpi-value" style="font-size:16px">${datos.length}</div></div>
+  `;
+  document.getElementById('hist-list').innerHTML=datos.length
+    ?datos.map(g=>entryHTML(g,true)).join('')
+    :'<div class="empty">Sin registros para este período</div>';
+}
+
+function renderGraficos(){
+  // Donut por categoría
+  const porCat={};
+  gastos.forEach(g=>{porCat[g.cat]=(porCat[g.cat]||0)+g.importe;});
+  const cats=Object.keys(porCat).sort((a,b)=>porCat[b]-porCat[a]);
+  if(charts.donut) charts.donut.destroy();
+  charts.donut=new Chart(document.getElementById('chart-donut'),{
+    type:'doughnut',
+    data:{labels:cats,datasets:[{data:cats.map(c=>Math.round(porCat[c])),backgroundColor:cats.map(c=>CC[c]||'#64748b'),borderWidth:2,borderColor:'#1e293b'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.parsed)}}}}
+  });
+  document.getElementById('legend-donut').innerHTML=cats.map(c=>
+    `<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#94a3b8"><span style="width:9px;height:9px;border-radius:2px;background:${CC[c]||'#64748b'};flex-shrink:0"></span>${c}</span>`
+  ).join('');
+
+  // Mensual total
+  const meses=[...new Set(gastos.map(g=>g.fecha.slice(0,7)))].sort();
+  const mLabels=meses.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleString('es-AR',{month:'short',year:'2-digit'});});
+  const mData=meses.map(m=>Math.round(gastos.filter(g=>g.fecha.startsWith(m)).reduce((s,g)=>s+g.importe,0)));
+  if(charts.mes) charts.mes.destroy();
+  charts.mes=new Chart(document.getElementById('chart-mes'),{
+    type:'bar',
+    data:{labels:mLabels,datasets:[{data:mData,backgroundColor:'#38bdf820',borderColor:'#38bdf8',borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.parsed.y)}}},
+      scales:{y:{ticks:{color:'#64748b',callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'rgba(148,163,184,.08)'}},
+               x:{ticks:{color:'#64748b',autoSkip:true,maxRotation:45},grid:{display:false}}}}
+  });
+
+  // Costo por km
+  const combs=gastos.filter(g=>g.cat==='Combustible'&&g.km).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const kmMesMap={};
+  combs.forEach((g,i)=>{
+    const m=g.fecha.slice(0,7);
+    let d=g.km_parcial||(i>0&&combs[i-1].km?parseInt(g.km)-parseInt(combs[i-1].km):0);
+    if(d>0) kmMesMap[m]=(kmMesMap[m]||0)+d;
+  });
+  const cxkmMeses=Object.keys(kmMesMap).sort();
+  const cxkmLabels=cxkmMeses.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleString('es-AR',{month:'short',year:'2-digit'});});
+  const cxkmData=cxkmMeses.map(m=>{
+    const gM=gastos.filter(g=>g.cat==='Combustible'&&g.fecha.startsWith(m)).reduce((s,g)=>s+g.importe,0);
+    const kM=kmMesMap[m];
+    return kM>0?Math.round(gM/kM):0;
+  });
+  if(charts.cxkm) charts.cxkm.destroy();
+  charts.cxkm=new Chart(document.getElementById('chart-cxkm'),{
+    type:'line',
+    data:{labels:cxkmLabels,datasets:[{data:cxkmData,borderColor:'#fb923c',backgroundColor:'#fb923c15',tension:.3,pointRadius:3,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'$'+ctx.parsed.y+'/km'}}},
+      scales:{y:{ticks:{color:'#64748b',callback:v=>'$'+v},grid:{color:'rgba(148,163,184,.08)'}},x:{ticks:{color:'#64748b',autoSkip:true,maxRotation:45},grid:{display:false}}}}
+  });
+}
+
+function showTab(name,idx){
+  ['inicio','nuevo','historial','graficos'].forEach(p=>document.getElementById('panel-'+p).classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item')[idx].classList.add('active');
+  document.getElementById('scroll-area').scrollTop=0;
+  if(name==='graficos') setTimeout(renderGraficos,100);
+  if(name==='historial') renderHistorial();
+  if(name==='inicio') renderInicio();
+}
+
+// ---- SYNC ----
+function openModal(){
+  document.getElementById('modal-overlay').classList.add('open');
+  const url=localStorage.getItem('sheets_url')||'';
+  document.getElementById('sheets-url').value=url;
+}
+function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
+function closeModalOutside(e){ if(e.target===document.getElementById('modal-overlay')) closeModal(); }
+
+function exportJSON(){
+  const blob=new Blob([JSON.stringify(gastos,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='gastos_auto_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+}
+
+function importJSON(e){
+  const file=e.target.files[0]; if(!file) return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const imported=JSON.parse(ev.target.result);
+      const ids=new Set(gastos.map(g=>g.id));
+      const toAdd=imported.filter(g=>!ids.has(g.id));
+      gastos=[...gastos,...toAdd].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+      save(); updateHdrKm(); renderInicio(); poblarAnioFilters();
+      setStatus(`✓ Importados ${toAdd.length} registros nuevos`,'ok');
+    }catch(err){ setStatus('Error al leer el archivo','err'); }
+  };
+  reader.readAsText(file);
+}
+
+async function pushToSheets(url, rows){
+  await fetch(url,{method:'POST',body:JSON.stringify({action:'append',rows})});
+}
+
+async function syncSheets(){
+  const url=document.getElementById('sheets-url').value.trim();
+  if(!url){ setStatus('Ingresá la URL del Apps Script','err'); return; }
+  localStorage.setItem('sheets_url',url);
+  setStatus('Conectando...','ok');
+  try{
+    // Push all data
+    const res=await fetch(url,{method:'POST',body:JSON.stringify({action:'sync',data:gastos})});
+    const json=await res.json();
+    if(json.status==='ok'){
+      setStatus(`✓ Sincronizado — ${json.rows} registros en Sheets`,'ok');
+    } else { setStatus('Error: '+json.message,'err'); }
+  }catch(e){ setStatus('No se pudo conectar. Verificá la URL.','err'); }
+}
+
+function setStatus(msg,type){
+  const el=document.getElementById('sync-status');
+  el.className='status-bar status-'+type; el.textContent=msg;
+}
+
+// Service Worker registration
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+
+load();
+</script>
+</body>
+</html>
