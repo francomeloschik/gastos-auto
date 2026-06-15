@@ -85,8 +85,6 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 
 textarea{resize:none;min-height:72px;line-height:1.5}
 select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%2394a3b8'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
 .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.odo-box{background:rgba(56,189,248,.05);border:0.5px solid rgba(56,189,248,.2);border-radius:var(--radius-sm);padding:12px;margin-top:4px}
-.odo-hint{font-size:11px;color:var(--accent);margin-top:6px;font-family:var(--mono)}
 
 .btn-save{
   width:100%;padding:14px;background:var(--accent2);border:none;border-radius:var(--radius);
@@ -108,13 +106,20 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .entry-del:active{color:var(--danger)}
 
 /* FILTERS */
-.filters{display:flex;gap:8px;margin-bottom:14px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.filters{display:flex;gap:8px;margin-bottom:10px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
 .filters::-webkit-scrollbar{display:none}
 .filter-chip{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:0.5px solid var(--border2);background:none;color:var(--text2);white-space:nowrap;font-family:var(--font);flex-shrink:0}
 .filter-chip.active{background:var(--accent2);color:#fff;border-color:var(--accent2)}
 
+/* SEARCH */
+.search-wrap{margin-bottom:12px}
+.search-wrap input{font-size:13px;padding:9px 12px}
+
 /* CHARTS */
 .chart-wrap{position:relative;width:100%}
+.chart-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;justify-content:center}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text2)}
+.legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
 
 /* SYNC MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:none;align-items:flex-end}
@@ -150,14 +155,17 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 
   <div class="scroll" id="scroll-area">
 
+    <!-- PANEL INICIO -->
     <div id="panel-inicio" class="panel active">
       <div class="kpi-grid" id="kpi-grid"></div>
+      <div id="kpi-grid2" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:14px"></div>
       <div class="card">
         <div class="card-title">Últimos gastos</div>
         <div id="recent-list"></div>
       </div>
     </div>
 
+    <!-- PANEL NUEVO -->
     <div id="panel-nuevo" class="panel">
       <div class="card">
         <div class="form-section">
@@ -185,7 +193,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
           </div>
           <div>
             <label class="form-label">Importe ($)</label>
-            <input type="number" id="f-importe" placeholder="0" inputmode="numeric">
+            <input type="number" id="f-importe" placeholder="0" inputmode="numeric" oninput="calcComb()">
           </div>
         </div>
         <div class="form-section">
@@ -230,29 +238,50 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
     </div>
 
+    <!-- PANEL HISTORIAL -->
     <div id="panel-historial" class="panel">
       <div class="filters" id="anio-filters"></div>
+      <div class="filters" id="cat-filters"></div>
+      <div class="search-wrap">
+        <input type="text" id="hist-search" placeholder="🔍 Buscar por categoría, proveedor, notas..." oninput="renderHistorial()">
+      </div>
       <div id="hist-metrics" class="kpi-grid" style="grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px"></div>
       <div class="card" id="hist-list"></div>
     </div>
 
+    <!-- PANEL GRÁFICOS -->
     <div id="panel-graficos" class="panel">
       <div class="card">
-        <div class="card-title">Mantenimiento — Por categoría (Sin Nafta)</div>
+        <div class="card-title">Mantenimiento — Por categoría (sin nafta)</div>
         <div class="chart-wrap" style="height:200px"><canvas id="chart-donut"></canvas></div>
-        <div id="legend-donut" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"></div>
+        <div id="legend-donut" class="chart-legend" style="margin-top:12px"></div>
       </div>
       <div class="card">
-        <div class="card-title">Combustible — Gasto Mensual ($)</div>
+        <div class="card-title">Combustible — Gasto mensual ($)</div>
         <div class="chart-wrap" style="height:180px"><canvas id="chart-mes"></canvas></div>
       </div>
       <div class="card">
         <div class="card-title">Eficiencia — Rendimiento (km/L)</div>
         <div class="chart-wrap" style="height:160px"><canvas id="chart-cxkm"></canvas></div>
       </div>
+      <div class="card">
+        <div class="card-title">Gasto mensual — Combustible vs Mantenimiento</div>
+        <div class="chart-wrap" style="height:220px"><canvas id="chart-mensual-total"></canvas></div>
+        <div id="legend-mensual" class="chart-legend"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Combustible — Evolución del precio por litro</div>
+        <div class="chart-wrap" style="height:160px"><canvas id="chart-precio-litro"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Ranking de categorías — Total acumulado</div>
+        <div class="chart-wrap" style="height:240px"><canvas id="chart-top-cats"></canvas></div>
+      </div>
     </div>
 
-  </div><nav class="nav">
+  </div>
+
+  <nav class="nav">
     <button class="nav-item active" onclick="showTab('inicio',0)"><span class="nav-icon">🏠</span><span class="nav-label">Inicio</span></button>
     <button class="nav-item" onclick="showTab('nuevo',1)"><span class="nav-icon">＋</span><span class="nav-label">Nuevo</span></button>
     <button class="nav-item" onclick="showTab('historial',2)"><span class="nav-icon">📋</span><span class="nav-label">Historial</span></button>
@@ -270,7 +299,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <div style="font-size:13px;color:var(--text2);margin-bottom:10px;font-weight:500">Google Sheets (sincronización automática)</div>
     <div class="sheets-input">
       <label class="form-label" style="margin-bottom:6px">URL del Apps Script Web App</label>
-      <input type="url" id="sheets-url" placeholder="https://script.google.com/macros/s/..." style="font-size:13px">
+      <input type="url" id="sheets-url" placeholder="https://script.google.com/macros/s/...">
     </div>
     <button class="modal-btn btn-sheets" onclick="syncSheets()">🔄 Sincronizar con Google Sheets</button>
     <div id="sync-status"></div>
@@ -280,8 +309,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 </div>
 
 <script>
-// BASE DE DATOS HISTÓRICA INICIAL
-const HIST = [{"id":1000057,"fecha":"2026-03-13","importe":40000.0,"cat":"Combustible","km":"279550","prov":null,"litros":"21.67","notas":null},{"id":1000056,"fecha":"2026-03-06","importe":40000.0,"cat":"Combustible","km":"279208","prov":"YPF","litros":"22.92","notas":null},{"id":1000055,"fecha":"2026-02-25","importe":40000.0,"cat":"Combustible","km":"278969","prov":"YPF","litros":"23.61","notas":null},{"id":1000054,"fecha":"2026-02-17","importe":40000.0,"cat":"Combustible","km":"278675","prov":"YPF","litros":"23.85","notas":null},{"id":1000053,"fecha":"2026-02-07","importe":40000.0,"cat":"Combustible","km":"278613","prov":"YPF","litros":"24.2","notas":null},{"id":1000080,"fecha":"2026-02-03","importe":442500.0,"cat":"Frenos","km":null,"prov":null,"litros":null,"notas":"Rotula del alternador ( conexion a PoliV)-colector-autom\u00e1tico arranque-discos y pastillas traseras + mano de obra"},{"id":1000052,"fecha":"2025-12-30","importe":70000.0,"cat":"Combustible","km":"277863","prov":"YPF","litros":"43.24","notas":null},{"id":1000079,"fecha":"2025-12-19","importe":130000.0,"cat":"El\u00e9ctrico","km":null,"prov":null,"litros":null,"notas":"Burro de arranque (repuestos + mano de obra)"},{"id":1000051,"fecha":"2025-12-12","importe":76750.0,"cat":"Combustible","km":"276782","prov":"YPF","litros":"47.41","notas":null},{"id":1000050,"fecha":"2025-12-01","importe":14000.0,"cat":"Combustible","km":"276222","prov":"YPF","litros":"12.72","notas":null},{"id":1000049,"fecha":"2025-11-14","importe":72000.0,"cat":"Combustible","km":"275835","prov":"YPF","litros":"48.88","notas":null},{"id":1000048,"fecha":"2025-10-29","importe":42500.0,"cat":"Combustible","km":"275292","prov":"YPF","litros":"35.56","notas":null},{"id":1000047,"fecha":"2025-10-06","importe":65000.0,"cat":"Combustible","km":"275017","prov":"YPF","litros":"46.63","notas":null},{"id":1000046,"fecha":"2025-09-27","importe":30000.0,"cat":"Combustible","km":"274530","prov":"YPF","litros":"21.9","notas":null},{"id":1000045,"fecha":"2025-09-05","importe":64200.0,"cat":"Combustible","km":"274202","prov":"YPF","litros":"47.77","notas":null},{"id":1000044,"fecha":"2025-08-21","importe":40000.0,"cat":"Combustible","km":"273932","prov":"YPF","litros":"30.49","notas":null},{"id":1000043,"fecha":"2025-08-11","importe":30000.0,"cat":"Combustible","km":"273692","prov":"YPF","litros":"23.33","notas":null},{"id":1000042,"fecha":"2025-08-02","importe":30000.0,"cat":"Combustible","km":"273392","prov":"SHELL","litros":"21.65","notas":null},{"id":1000041,"fecha":"2025-07-27","importe":30000.0,"cat":"Combustible","km":"273179","prov":"YPF","litros":"23.89","notas":null},{"id":1000078,"fecha":"2025-07-25","importe":57500.0,"cat":"Filtros y aceite","km":"273100","prov":null,"litros":null,"notas":"Filtros de aire, aceite y gasoil"},{"id":1000077,"fecha":"2025-07-21","importe":60000.0,"cat":"Filtros y aceite","km":"273000","prov":null,"litros":null,"notas":"Aceite 5 w40 Mannol"},{"id":1000040,"fecha":"2025-07-18","importe":30000.0,"cat":"Combustible","km":"272929","prov":"YPF","litros":"23.92","notas":null},{"id":1000039,"fecha":"2025-07-07","importe":30000.0,"cat":"Combustible","km":"272674","prov":"YPF","litros":"24.49","notas":null},{"id":1000038,"fecha":"2025-06-26","importe":30000.0,"cat":"Combustible","km":"272377","prov":"YPF","litros":"25.1","notas":null},{"id":1000037,"fecha":"2025-06-18","importe":30000.0,"cat":"Combustible","km":"272122","prov":"YPF","litros":"25.1","notas":null},{"id":1000036,"fecha":"2025-06-10","importe":30000.0,"cat":"Combustible","km":"271877","prov":"YPF","litros":"24.69","notas":null},{"id":1000076,"fecha":"2025-06-09","importe":200000.0,"cat":"Motor y turbo","km":"271877","prov":null,"litros":null,"notas":"Limpieza sensor maf,intercooler, admision,egr,turbo.Cambio recipiente de refrigerante"},{"id":1000035,"fecha":"2025-05-24","importe":30000.0,"cat":"Combustible","km":"271738","prov":"SHELL","litros":"24.98","notas":null},{"id":1000075,"fecha":"2025-05-23","importe":455000.0,"cat":"Suspensi\u00f3n y direcci\u00f3n","km":"271738","prov":null,"litros":null,"notas":"Bieletas +parrilla de suspension completa"},{"id":1000034,"fecha":"2025-05-16","importe":30000.0,"cat":"Combustible","km":"271454","prov":"YPF","litros":"25.38","notas":null},{"id":1000033,"fecha":"2025-05-08","importe":30000.0,"cat":"Combustible","km":"271163","prov":"YPF","litros":"25.49","notas":null},{"id":1000032,"fecha":"2025-04-30","importe":15000.0,"cat":"Combustible","km":"271040","prov":"YPF","litros":"12.35","notas":null},{"id":1000031,"fecha":"2025-04-11","importe":26000.0,"cat":"Combustible","km":"270681","prov":"YPF","litros":"20.38","notas":null},{"id":1000030,"fecha":"2025-04-04","importe":26000.0,"cat":"Combustible","km":"270534","prov":"YPF","litros":"20.38","notas":null},{"id":1000029,"fecha":"2025-03-21","importe":26000.0,"cat":"Combustible","km":"270333","prov":"YPF","litros":"20.73","notas":null},{"id":1000028,"fecha":"2025-03-14","importe":26000.0,"cat":"Combustible","km":"270100","prov":"YPF","litros":"20.73","notas":null},{"id":1000027,"fecha":"2025-03-07","importe":26000.0,"cat":"Combustible","km":"269934","prov":"YPF","litros":"20.73","notas":null},{"id":1000026,"fecha":"2025-03-02","importe":25000.0,"cat":"Combustible","km":"269703","prov":"SHELL","litros":"20.24","notas":null},{"id":1000025,"fecha":"2025-02-16","importe":64000.0,"cat":"Combustible","km":"269173","prov":"YPF","litros":"45.07","notas":null},{"id":1000072,"fecha":"2025-02-14","importe":24100.0,"cat":"Motor y turbo","km":"269124","prov":null,"litros":null,"notas":"Limpiainyectores liqui Moly"},{"id":1000073,"fecha":"2025-02-14","importe":75000.0,"cat":"Suspensi\u00f3n y direcci\u00f3n","km":"269124","prov":null,"litros":null,"notas":"Rotula izquierda delantera+mano de obra+ alineaci\u00f3n"},{"id":1000074,"fecha":"2025-02-14","importe":150000.0,"cat":"Neum\u00e1ticos","km":"269124","prov":null,"litros":null,"notas":"Cubierta+balanceo"},{"id":1000024,"fecha":"2025-02-10","importe":20000.0,"cat":"Combustible","km":"269124","prov":"YPF","litros":"17.09","notas":null},{"id":1000023,"fecha":"2025-02-02","importe":30000.0,"cat":"Combustible","km":"268800","prov":"SHELL","litros":"24.31","notas":null},{"id":1000071,"fecha":"2025-02-02","importe":71600.0,"cat":"Motor y turbo","km":"268500","prov":null,"litros":null,"notas":"Mano de obra electro y cambio de orrings turbo"},{"id":1000022,"fecha":"2025-01-26","importe":25000.0,"cat":"Combustible","km":"268086","prov":"YPF","litros":"21.8","notas":null},{"id":1000069,"fecha":"2025-01-23","importe":13500.0,"cat":"Motor y turbo","km":"267826","prov":null,"litros":null,"notas":"Orrings turbo negros"},{"id":1000070,"fecha":"2025-01-23","importe":68400.0,"cat":"El\u00e9ctrico","km":"267826","prov":null,"litros":null,"notas":"Electro aire acondicionado"},{"id":1000021,"fecha":"2025-01-21","importe":30000.0,"cat":"Combustible","km":"267826","prov":"YPF","litros":"26.16","notas":null},{"id":1000020,"fecha":"2024-11-27","importe":30000.0,"cat":"Combustible","km":"267591","prov":"YPF","litros":"22.34","notas":null},{"id":1000068,"fecha":"2024-11-24","importe":12500.0,"cat":"Carrocer\u00eda y est\u00e9tica","km":"267525","prov":null,"litros":null,"notas":"Rejilla delantera derecha (plastico)"},{"id":1000019,"fecha":"2024-11-13","importe":10000.0,"cat":"Combustible","km":"267295","prov":"SHELL","litros":"8.69","notas":null},{"id":1000067,"fecha":"2024-11-12","importe":130000.0,"cat":"Neum\u00e1ticos","km":"267250","prov":null,"litros":null,"notas":"Compra cubierta delantera"},{"id":1000018,"fecha":"2024-11-08","importe":36000.0,"cat":"Combustible","km":"267173","prov":"YPF","litros":"29.78","notas":null},{"id":1000017,"fecha":"2024-11-01","importe":25000.0,"cat":"Combustible","km":"266913","prov":"YPF","litros":"22.58","notas":null},{"id":1000066,"fecha":"2024-10-25","importe":20000.0,"cat":"El\u00e9ctrico","km":"266750","prov":null,"litros":null,"notas":"Cambio luces delanteras"},{"id":1000016,"fecha":"2024-10-23","importe":20000.0,"cat":"Combustible","km":"266729","prov":"YPF","litros":"18.57","notas":null},{"id":1000015,"fecha":"2024-10-13","importe":25000.0,"cat":"Combustible","km":"266488","prov":"YPF","litros":"23.21","notas":null},{"id":1000014,"fecha":"2024-09-27","importe":25500.0,"cat":"Combustible","km":"266211","prov":"YPF","litros":"22.49","notas":null},{"id":1000013,"fecha":"2024-09-18","importe":20000.0,"cat":"Combustible","km":"266026","prov":"SHELL","litros":"17.62","notas":null},{"id":1000012,"fecha":"2024-09-13","importe":20000.0,"cat":"Combustible","km":"265836","prov":"YPF","litros":"18.2","notas":null},{"id":1000011,"fecha":"2024-09-05","importe":20000.0,"cat":"Combustible","km":"265553","prov":"YPF","litros":"18.2","notas":null},{"id":1000010,"fecha":"2024-08-28","importe":25500.0,"cat":"Combustible","km":"265274","prov":"YPF","litros":"22.26","notas":null},{"id":1000064,"fecha":"2024-08-23","importe":80000.0,"cat":"Frenos","km":"265110","prov":null,"litros":null,"notas":"Cambio  extremos, precap, rotulas, fuelle cremallera y pastilas de freno"},{"id":1000065,"fecha":"2024-08-23","importe":50000.0,"cat":"Otros","km":"265110","prov":null,"litros":null,"notas":"mano de obra de anterior"},{"id":1000009,"fecha":"2024-08-11","importe":20000.0,"cat":"Combustible","km":"265038","prov":"SHELL","litros":"17.67","notas":null},{"id":1000008,"fecha":"2024-08-06","importe":25000.0,"cat":"Combustible","km":"264900","prov":"SHELL","litros":"21.93","notas":null},{"id":1000063,"fecha":"2024-07-24","importe":10800.0,"cat":"Carrocer\u00eda y est\u00e9tica","km":"264490","prov":null,"litros":null,"notas":"Cambio escobillas de limpiaparabrisas"},{"id":1000007,"fecha":"2024-07-23","importe":15000.0,"cat":"Combustible","km":"264530","prov":"SHELL","litros":"13.65","notas":null},{"id":1000006,"fecha":"2024-07-20","importe":25000.0,"cat":"Combustible","km":"264476","prov":"SHELL","litros":"22.58","notas":null},{"id":1000005,"fecha":"2024-07-02","importe":20000.0,"cat":"Combustible","km":"264324","prov":"YPF","litros":"19.1","notas":null},{"id":1000062,"fecha":"2024-06-25","importe":50000.0,"cat":"Correas","km":"264200","prov":null,"litros":null,"notas":"Mano de obra cambio correa y tensor"},{"id":1000004,"fecha":"2024-06-19","importe":18000.0,"cat":"Combustible","km":"264168","prov":"SHELL","litros":"15.28","notas":null},{"id":1000061,"fecha":"2024-06-18","importe":169000.0,"cat":"Correas","km":"264168","prov":null,"litros":null,"notas":"Cambio correa poli V y tensor"},{"id":1000003,"fecha":"2024-06-05","importe":20000.0,"cat":"Combustible","km":"263956","prov":"YPF","litros":"19.1","notas":null},{"id":1000002,"fecha":"2024-05-30","importe":10000.0,"cat":"Combustible","km":"263825","prov":"YPF","litros":"9.79","notas":null},{"id":1000001,"fecha":"2024-05-22","importe":20000.0,"cat":"Combustible","km":"263450","prov":"YPF","litros":"19.59","notas":null},{"id":1000060,"fecha":"2024-05-21","importe":50000.0,"cat":"Carrocer\u00eda y est\u00e9tica","km":"263515","prov":null,"litros":null,"notas":"Retapizado puertas delanteras"},{"id":1000059,"fecha":"2024-05-15","importe":95000.0,"cat":"El\u00e9ctrico","km":"263500","prov":null,"litros":null,"notas":"Cambio bateria-12-75"},{"id":1000058,"fecha":"2024-05-04","importe":94000.0,"cat":"Filtros y aceite","km":"263400","prov":null,"litros":null,"notas":"Cambio filtros aire, diesel, aceite, polen-cambio de aceite"},{"id":1000000,"fecha":"2024-04-27","importe":10000.0,"cat":"Combustible","km":"263400","prov":"YPF","litros":"9.79","notas":null}];
+const HIST = [{"id":1000057,"fecha":"2026-03-13","importe":40000.0,"cat":"Combustible","km":"279550","prov":null,"litros":"21.67","notas":null},{"id":1000056,"fecha":"2026-03-06","importe":40000.0,"cat":"Combustible","km":"279208","prov":"YPF","litros":"22.92","notas":null},{"id":1000055,"fecha":"2026-02-25","importe":40000.0,"cat":"Combustible","km":"278969","prov":"YPF","litros":"23.61","notas":null},{"id":1000054,"fecha":"2026-02-17","importe":40000.0,"cat":"Combustible","km":"278675","prov":"YPF","litros":"23.85","notas":null},{"id":1000053,"fecha":"2026-02-07","importe":40000.0,"cat":"Combustible","km":"278613","prov":"YPF","litros":"24.2","notas":null},{"id":1000080,"fecha":"2026-02-03","importe":442500.0,"cat":"Frenos","km":null,"prov":null,"litros":null,"notas":"Rotula del alternador ( conexion a PoliV)-colector-automático arranque-discos y pastillas traseras + mano de obra"},{"id":1000052,"fecha":"2025-12-30","importe":70000.0,"cat":"Combustible","km":"277863","prov":"YPF","litros":"43.24","notas":null},{"id":1000079,"fecha":"2025-12-19","importe":130000.0,"cat":"Eléctrico","km":null,"prov":null,"litros":null,"notas":"Burro de arranque (repuestos + mano de obra)"},{"id":1000051,"fecha":"2025-12-12","importe":76750.0,"cat":"Combustible","km":"276782","prov":"YPF","litros":"47.41","notas":null},{"id":1000050,"fecha":"2025-12-01","importe":14000.0,"cat":"Combustible","km":"276222","prov":"YPF","litros":"12.72","notas":null},{"id":1000049,"fecha":"2025-11-14","importe":72000.0,"cat":"Combustible","km":"275835","prov":"YPF","litros":"48.88","notas":null},{"id":1000048,"fecha":"2025-10-29","importe":42500.0,"cat":"Combustible","km":"275292","prov":"YPF","litros":"35.56","notas":null},{"id":1000047,"fecha":"2025-10-06","importe":65000.0,"cat":"Combustible","km":"275017","prov":"YPF","litros":"46.63","notas":null},{"id":1000046,"fecha":"2025-09-27","importe":30000.0,"cat":"Combustible","km":"274530","prov":"YPF","litros":"21.9","notas":null},{"id":1000045,"fecha":"2025-09-05","importe":64200.0,"cat":"Combustible","km":"274202","prov":"YPF","litros":"47.77","notas":null},{"id":1000044,"fecha":"2025-08-21","importe":40000.0,"cat":"Combustible","km":"273932","prov":"YPF","litros":"30.49","notas":null},{"id":1000043,"fecha":"2025-08-11","importe":30000.0,"cat":"Combustible","km":"273692","prov":"YPF","litros":"23.33","notas":null},{"id":1000042,"fecha":"2025-08-02","importe":30000.0,"cat":"Combustible","km":"273392","prov":"SHELL","litros":"21.65","notas":null},{"id":1000041,"fecha":"2025-07-27","importe":30000.0,"cat":"Combustible","km":"273179","prov":"YPF","litros":"23.89","notas":null},{"id":1000078,"fecha":"2025-07-25","importe":57500.0,"cat":"Filtros y aceite","km":"273100","prov":null,"litros":null,"notas":"Filtros de aire, aceite y gasoil"},{"id":1000077,"fecha":"2025-07-21","importe":60000.0,"cat":"Filtros y aceite","km":"273000","prov":null,"litros":null,"notas":"Aceite 5 w40 Mannol"},{"id":1000040,"fecha":"2025-07-18","importe":30000.0,"cat":"Combustible","km":"272929","prov":"YPF","litros":"23.92","notas":null},{"id":1000039,"fecha":"2025-07-07","importe":30000.0,"cat":"Combustible","km":"272674","prov":"YPF","litros":"24.49","notas":null},{"id":1000038,"fecha":"2025-06-26","importe":30000.0,"cat":"Combustible","km":"272377","prov":"YPF","litros":"25.1","notas":null},{"id":1000037,"fecha":"2025-06-18","importe":30000.0,"cat":"Combustible","km":"272122","prov":"YPF","litros":"25.1","notas":null},{"id":1000036,"fecha":"2025-06-10","importe":30000.0,"cat":"Combustible","km":"271877","prov":"YPF","litros":"24.69","notas":null},{"id":1000076,"fecha":"2025-06-09","importe":200000.0,"cat":"Motor y turbo","km":"271877","prov":null,"litros":null,"notas":"Limpieza sensor maf,intercooler, admision,egr,turbo.Cambio recipiente de refrigerante"},{"id":1000035,"fecha":"2025-05-24","importe":30000.0,"cat":"Combustible","km":"271738","prov":"SHELL","litros":"24.98","notas":null},{"id":1000075,"fecha":"2025-05-23","importe":455000.0,"cat":"Suspensión y dirección","km":"271738","prov":null,"litros":null,"notas":"Bieletas +parrilla de suspension completa"},{"id":1000034,"fecha":"2025-05-16","importe":30000.0,"cat":"Combustible","km":"271454","prov":"YPF","litros":"25.38","notas":null},{"id":1000033,"fecha":"2025-05-08","importe":30000.0,"cat":"Combustible","km":"271163","prov":"YPF","litros":"25.49","notas":null},{"id":1000032,"fecha":"2025-04-30","importe":15000.0,"cat":"Combustible","km":"271040","prov":"YPF","litros":"12.35","notas":null},{"id":1000031,"fecha":"2025-04-11","importe":26000.0,"cat":"Combustible","km":"270681","prov":"YPF","litros":"20.38","notas":null},{"id":1000030,"fecha":"2025-04-04","importe":26000.0,"cat":"Combustible","km":"270534","prov":"YPF","litros":"20.38","notas":null},{"id":1000029,"fecha":"2025-03-21","importe":26000.0,"cat":"Combustible","km":"270333","prov":"YPF","litros":"20.73","notas":null},{"id":1000028,"fecha":"2025-03-14","importe":26000.0,"cat":"Combustible","km":"270100","prov":"YPF","litros":"20.73","notas":null},{"id":1000027,"fecha":"2025-03-07","importe":26000.0,"cat":"Combustible","km":"269934","prov":"YPF","litros":"20.73","notas":null},{"id":1000026,"fecha":"2025-03-02","importe":25000.0,"cat":"Combustible","km":"269703","prov":"SHELL","litros":"20.24","notas":null},{"id":1000025,"fecha":"2025-02-16","importe":64000.0,"cat":"Combustible","km":"269173","prov":"YPF","litros":"45.07","notas":null},{"id":1000072,"fecha":"2025-02-14","importe":24100.0,"cat":"Motor y turbo","km":"269124","prov":null,"litros":null,"notas":"Limpiainyectores liqui Moly"},{"id":1000073,"fecha":"2025-02-14","importe":75000.0,"cat":"Suspensión y dirección","km":"269124","prov":null,"litros":null,"notas":"Rotula izquierda delantera+mano de obra+ alineación"},{"id":1000074,"fecha":"2025-02-14","importe":150000.0,"cat":"Neumáticos","km":"269124","prov":null,"litros":null,"notas":"Cubierta+balanceo"},{"id":1000024,"fecha":"2025-02-10","importe":20000.0,"cat":"Combustible","km":"269124","prov":"YPF","litros":"17.09","notas":null},{"id":1000023,"fecha":"2025-02-02","importe":30000.0,"cat":"Combustible","km":"268800","prov":"SHELL","litros":"24.31","notas":null},{"id":1000071,"fecha":"2025-02-02","importe":71600.0,"cat":"Motor y turbo","km":"268500","prov":null,"litros":null,"notas":"Mano de obra electro y cambio de orrings turbo"},{"id":1000022,"fecha":"2025-01-26","importe":25000.0,"cat":"Combustible","km":"268086","prov":"YPF","litros":"21.8","notas":null},{"id":1000069,"fecha":"2025-01-23","importe":13500.0,"cat":"Motor y turbo","km":"267826","prov":null,"litros":null,"notas":"Orrings turbo negros"},{"id":1000070,"fecha":"2025-01-23","importe":68400.0,"cat":"Eléctrico","km":"267826","prov":null,"litros":null,"notas":"Electro aire acondicionado"},{"id":1000021,"fecha":"2025-01-21","importe":30000.0,"cat":"Combustible","km":"267826","prov":"YPF","litros":"26.16","notas":null},{"id":1000020,"fecha":"2024-11-27","importe":30000.0,"cat":"Combustible","km":"267591","prov":"YPF","litros":"22.34","notas":null},{"id":1000068,"fecha":"2024-11-24","importe":12500.0,"cat":"Carrocería y estética","km":"267525","prov":null,"litros":null,"notas":"Rejilla delantera derecha (plastico)"},{"id":1000019,"fecha":"2024-11-13","importe":10000.0,"cat":"Combustible","km":"267295","prov":"SHELL","litros":"8.69","notas":null},{"id":1000067,"fecha":"2024-11-12","importe":130000.0,"cat":"Neumáticos","km":"267250","prov":null,"litros":null,"notas":"Compra cubierta delantera"},{"id":1000018,"fecha":"2024-11-08","importe":36000.0,"cat":"Combustible","km":"267173","prov":"YPF","litros":"29.78","notas":null},{"id":1000017,"fecha":"2024-11-01","importe":25000.0,"cat":"Combustible","km":"266913","prov":"YPF","litros":"22.58","notas":null},{"id":1000066,"fecha":"2024-10-25","importe":20000.0,"cat":"Eléctrico","km":"266750","prov":null,"litros":null,"notas":"Cambio luces delanteras"},{"id":1000016,"fecha":"2024-10-23","importe":20000.0,"cat":"Combustible","km":"266729","prov":"YPF","litros":"18.57","notas":null},{"id":1000015,"fecha":"2024-10-13","importe":25000.0,"cat":"Combustible","km":"266488","prov":"YPF","litros":"23.21","notas":null},{"id":1000014,"fecha":"2024-09-27","importe":25500.0,"cat":"Combustible","km":"266211","prov":"YPF","litros":"22.49","notas":null},{"id":1000013,"fecha":"2024-09-18","importe":20000.0,"cat":"Combustible","km":"266026","prov":"SHELL","litros":"17.62","notas":null},{"id":1000012,"fecha":"2024-09-13","importe":20000.0,"cat":"Combustible","km":"265836","prov":"YPF","litros":"18.2","notas":null},{"id":1000011,"fecha":"2024-09-05","importe":20000.0,"cat":"Combustible","km":"265553","prov":"YPF","litros":"18.2","notas":null},{"id":1000010,"fecha":"2024-08-28","importe":25500.0,"cat":"Combustible","km":"265274","prov":"YPF","litros":"22.26","notas":null},{"id":1000064,"fecha":"2024-08-23","importe":80000.0,"cat":"Frenos","km":"265110","prov":null,"litros":null,"notas":"Cambio  extremos, precap, rotulas, fuelle cremallera y pastilas de freno"},{"id":1000065,"fecha":"2024-08-23","importe":50000.0,"cat":"Otros","km":"265110","prov":null,"litros":null,"notas":"mano de obra de anterior"},{"id":1000009,"fecha":"2024-08-11","importe":20000.0,"cat":"Combustible","km":"265038","prov":"SHELL","litros":"17.67","notas":null},{"id":1000008,"fecha":"2024-08-06","importe":25000.0,"cat":"Combustible","km":"264900","prov":"SHELL","litros":"21.93","notas":null},{"id":1000063,"fecha":"2024-07-24","importe":10800.0,"cat":"Carrocería y estética","km":"264490","prov":null,"litros":null,"notas":"Cambio escobillas de limpiaparabrisas"},{"id":1000007,"fecha":"2024-07-23","importe":15000.0,"cat":"Combustible","km":"264530","prov":"SHELL","litros":"13.65","notas":null},{"id":1000006,"fecha":"2024-07-20","importe":25000.0,"cat":"Combustible","km":"264476","prov":"SHELL","litros":"22.58","notas":null},{"id":1000005,"fecha":"2024-07-02","importe":20000.0,"cat":"Combustible","km":"264324","prov":"YPF","litros":"19.1","notas":null},{"id":1000062,"fecha":"2024-06-25","importe":50000.0,"cat":"Correas","km":"264200","prov":null,"litros":null,"notas":"Mano de obra cambio correa y tensor"},{"id":1000004,"fecha":"2024-06-19","importe":18000.0,"cat":"Combustible","km":"264168","prov":"SHELL","litros":"15.28","notas":null},{"id":1000061,"fecha":"2024-06-18","importe":169000.0,"cat":"Correas","km":"264168","prov":null,"litros":null,"notas":"Cambio correa poli V y tensor"},{"id":1000003,"fecha":"2024-06-05","importe":20000.0,"cat":"Combustible","km":"263956","prov":"YPF","litros":"19.1","notas":null},{"id":1000002,"fecha":"2024-05-30","importe":10000.0,"cat":"Combustible","km":"263825","prov":"YPF","litros":"9.79","notas":null},{"id":1000001,"fecha":"2024-05-22","importe":20000.0,"cat":"Combustible","km":"263450","prov":"YPF","litros":"19.59","notas":null},{"id":1000060,"fecha":"2024-05-21","importe":50000.0,"cat":"Carrocería y estética","km":"263515","prov":null,"litros":null,"notas":"Retapizado puertas delanteras"},{"id":1000059,"fecha":"2024-05-15","importe":95000.0,"cat":"Eléctrico","km":"263500","prov":null,"litros":null,"notas":"Cambio bateria-12-75"},{"id":1000058,"fecha":"2024-05-04","importe":94000.0,"cat":"Filtros y aceite","km":"263400","prov":null,"litros":null,"notas":"Cambio filtros aire, diesel, aceite, polen-cambio de aceite"},{"id":1000000,"fecha":"2024-04-27","importe":10000.0,"cat":"Combustible","km":"263400","prov":"YPF","litros":"9.79","notas":null}];
 
 const CC = {'Combustible':'#38bdf8','Filtros y aceite':'#34d399','Neumáticos':'#fb923c','Frenos':'#f87171','Correas':'#e879f9','Suspensión y dirección':'#fb923c','Motor y turbo':'#a78bfa','Eléctrico':'#86efac','Carrocería y estética':'#67e8f9','Seguro / VTV':'#fbbf24','Peajes y estacionamiento':'#94a3b8','Otros':'#64748b'};
 const ICONS = {'Combustible':'⛽','Filtros y aceite':'🔧','Neumáticos':'🔄','Frenos':'🛑','Correas':'⚙️','Suspensión y dirección':'🔩','Motor y turbo':'💨','Eléctrico':'⚡','Carrocería y estética':'🎨','Seguro / VTV':'📋','Peajes y estacionamiento':'🅿️','Otros':'📦'};
@@ -301,7 +329,8 @@ function load(){
   }catch(e){ gastos=[...HIST]; }
   document.getElementById('f-fecha').value = new Date().toISOString().slice(0,10);
   updateHdrKm();
-  renderInicio(); poblarAnioFilters();
+  renderInicio();
+  poblarAnioFilters();
 }
 
 function updateHdrKm(){
@@ -321,8 +350,7 @@ function onCatChange(){
   document.getElementById('odo-mant-section').style.display = (!isComb&&cat)?'block':'none';
   if(isComb){
     const lastKm = lastKmComb();
-    const hint = document.getElementById('f-km-parcial');
-    hint.placeholder = lastKm ? `trip del auto (último: ${lastKm.toLocaleString('es-AR')} km)` : 'ej. 312';
+    document.getElementById('f-km-parcial').placeholder = lastKm ? `trip del auto (último: ${lastKm.toLocaleString('es-AR')} km)` : 'ej. 312';
     calcComb();
   }
 }
@@ -411,8 +439,28 @@ function renderInicio(){
     <div class="kpi"><div class="kpi-label">Combustible</div><div class="kpi-value" style="font-size:18px">${fmt(totalC)}</div><div class="kpi-sub">${Math.round(totalC/total*100)}% del total</div></div>
     <div class="kpi"><div class="kpi-label">Mantenimiento</div><div class="kpi-value" style="font-size:18px">${fmt(totalM)}</div><div class="kpi-sub">${Math.round(totalM/total*100)}% del total</div></div>
   `;
-  const recent=gastos.slice(0,8);
-  document.getElementById('recent-list').innerHTML=recent.map(g=>entryHTML(g,false)).join('');
+
+  const combsOrdenados=gastos.filter(g=>g.cat==='Combustible'&&g.km).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const kmInicial=combsOrdenados.length?parseInt(combsOrdenados[0].km):null;
+  const kmFinal=combsOrdenados.length?parseInt(combsOrdenados[combsOrdenados.length-1].km):null;
+  const kmRecorridos=(kmInicial&&kmFinal&&kmFinal>kmInicial)?kmFinal-kmInicial:null;
+  const costoPorKm=kmRecorridos?Math.round(total/kmRecorridos):null;
+
+  const combsConLitros=gastos.filter(g=>g.cat==='Combustible'&&g.litros&&g.km_parcial&&parseFloat(g.litros)>0);
+  const totalLitros=combsConLitros.reduce((s,g)=>s+parseFloat(g.litros),0);
+  const totalKmParcial=combsConLitros.reduce((s,g)=>s+g.km_parcial,0);
+  const kmlProm=totalLitros>0?(totalKmParcial/totalLitros).toFixed(1):null;
+
+  const ultimaCarga=gastos.filter(g=>g.cat==='Combustible'&&g.litros&&g.importe&&parseFloat(g.litros)>0).sort((a,b)=>b.fecha.localeCompare(a.fecha))[0];
+  const precioActual=ultimaCarga?Math.round(ultimaCarga.importe/parseFloat(ultimaCarga.litros)):null;
+
+  document.getElementById('kpi-grid2').innerHTML=`
+    <div class="kpi"><div class="kpi-label">Costo/km</div><div class="kpi-value" style="font-size:16px">${costoPorKm?'$'+costoPorKm.toLocaleString('es-AR'):'—'}</div><div class="kpi-sub">${kmRecorridos?kmRecorridos.toLocaleString('es-AR')+' km recorr.':'sin datos'}</div></div>
+    <div class="kpi"><div class="kpi-label">Km/L prom.</div><div class="kpi-value" style="font-size:16px">${kmlProm||'—'}</div><div class="kpi-sub">histórico</div></div>
+    <div class="kpi"><div class="kpi-label">Precio/L actual</div><div class="kpi-value" style="font-size:16px">${precioActual?'$'+precioActual.toLocaleString('es-AR'):'—'}</div><div class="kpi-sub">última carga</div></div>
+  `;
+
+  document.getElementById('recent-list').innerHTML=gastos.slice(0,8).map(g=>entryHTML(g,false)).join('');
 }
 
 function entryHTML(g,showDel=true){
@@ -433,17 +481,38 @@ function entryHTML(g,showDel=true){
   </div>`;
 }
 
-let filtroAnio='';
+let filtroAnio='', filtroCat='';
+
 function poblarAnioFilters(){
   const anios=[...new Set(gastos.map(g=>g.fecha.slice(0,4)))].sort().reverse();
   document.getElementById('anio-filters').innerHTML=
     `<button class="filter-chip ${!filtroAnio?'active':''}" onclick="setAnio('')">Todos</button>`+
     anios.map(a=>`<button class="filter-chip ${filtroAnio===a?'active':''}" onclick="setAnio('${a}')">${a}</button>`).join('');
+  poblarCatFilters();
 }
-function setAnio(a){ filtroAnio=a; poblarAnioFilters(); renderHistorial(); }
+
+function poblarCatFilters(){
+  const datos=gastos.filter(g=>!filtroAnio||g.fecha.startsWith(filtroAnio));
+  const cats=[...new Set(datos.map(g=>g.cat))].sort();
+  document.getElementById('cat-filters').innerHTML=
+    `<button class="filter-chip ${!filtroCat?'active':''}" onclick="setCat('')">Todas</button>`+
+    cats.map(c=>`<button class="filter-chip ${filtroCat===c?'active':''}" onclick="setCat(${JSON.stringify(c)})">${ICONS[c]||'📦'} ${c}</button>`).join('');
+}
+
+function setAnio(a){ filtroAnio=a; filtroCat=''; poblarAnioFilters(); renderHistorial(); }
+function setCat(c){ filtroCat=c; poblarCatFilters(); renderHistorial(); }
 
 function renderHistorial(){
-  const datos=gastos.filter(g=>!filtroAnio||g.fecha.startsWith(filtroAnio));
+  const query=(document.getElementById('hist-search')?.value||'').toLowerCase().trim();
+  const datos=gastos.filter(g=>{
+    if(filtroAnio&&!g.fecha.startsWith(filtroAnio)) return false;
+    if(filtroCat&&g.cat!==filtroCat) return false;
+    if(query){
+      const hay=[g.cat,g.prov,g.notas].filter(Boolean).join(' ').toLowerCase();
+      if(!hay.includes(query)) return false;
+    }
+    return true;
+  });
   const total=datos.reduce((s,g)=>s+g.importe,0);
   const mU=[...new Set(datos.map(g=>g.fecha.slice(0,7)))];
   const prom=mU.length?total/mU.length:0;
@@ -458,7 +527,7 @@ function renderHistorial(){
 }
 
 function renderGraficos(){
-  // --- 1. DONUT: Solo Mantenimiento (Excluye Combustible) ---
+  // 1. Donut: mantenimiento por categoría
   const porCat={};
   gastos.filter(g=>g.cat!=='Combustible').forEach(g=>{porCat[g.cat]=(porCat[g.cat]||0)+g.importe;});
   const cats=Object.keys(porCat).sort((a,b)=>porCat[b]-porCat[a]);
@@ -466,35 +535,84 @@ function renderGraficos(){
   charts.donut=new Chart(document.getElementById('chart-donut'),{
     type:'doughnut',
     data:{labels:cats,datasets:[{data:cats.map(c=>Math.round(porCat[c])),backgroundColor:cats.map(c=>CC[c]||'#64748b'),borderWidth:2,borderColor:'#1e293b'}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'Mantenimiento: '+fmt(ctx.parsed)}}}}
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.label+': '+fmt(ctx.parsed)}}}}
   });
   document.getElementById('legend-donut').innerHTML=cats.map(c=>
-    `<span style="display:flex;align-items:center;gap:5px;font-size:11px;color:#94a3b8"><span style="width:9px;height:9px;border-radius:2px;background:${CC[c]||'#64748b'};flex-shrink:0"></span>${c}</span>`
+    `<span class="legend-item"><span class="legend-dot" style="background:${CC[c]||'#64748b'}"></span>${c}</span>`
   ).join('');
 
-  // --- 2. BARRAS: Gasto Mensual de Combustible (Independiente) ---
+  // 2. Barras: gasto mensual combustible
   const meses=[...new Set(gastos.map(g=>g.fecha.slice(0,7)))].sort();
   const mLabels=meses.map(m=>{const[y,mo]=m.split('-');return new Date(y,mo-1).toLocaleString('es-AR',{month:'short',year:'2-digit'});});
   const mDataComb=meses.map(m=>Math.round(gastos.filter(g=>g.cat==='Combustible'&&g.fecha.startsWith(m)).reduce((s,g)=>s+g.importe,0)));
   if(charts.mes) charts.mes.destroy();
   charts.mes=new Chart(document.getElementById('chart-mes'),{
     type:'bar',
-    data:{labels:mLabels,datasets:[{label:'Gasto Combustible',data:mDataComb,backgroundColor:'#38bdf840',borderColor:'#38bdf8',borderWidth:1.5}]},
+    data:{labels:mLabels,datasets:[{label:'Combustible',data:mDataComb,backgroundColor:'#38bdf840',borderColor:'#38bdf8',borderWidth:1.5}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'Combustible: '+fmt(ctx.parsed.y)}}},
       scales:{y:{ticks:{color:'#64748b',callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'rgba(148,163,184,.08)'}},
-               x:{ticks:{color:'#64748b',autoSkip:true},grid:{display:false}}}}
+               x:{ticks:{color:'#64748b',autoSkip:true,maxRotation:0},grid:{display:false}}}}
   });
 
-  // --- 3. LINEA: Rendimiento (Km por Litro) ---
-  const combs=gastos.filter(g=>g.cat==='Combustible'&&g.km&&g.litros).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  // 3. Línea: rendimiento km/L
+  const combs=gastos.filter(g=>g.cat==='Combustible'&&g.litros&&g.km_parcial&&parseFloat(g.litros)>0).sort((a,b)=>a.fecha.localeCompare(b.fecha));
   const rendLabels=combs.map(g=>new Date(g.fecha+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'short'}));
-  const rendData=combs.map((g,i)=>{if(i===0||!g.km_parcial)return null;return(parseFloat(g.km_parcial)/parseFloat(g.litros)).toFixed(2);}).filter(v=>v!==null);
+  const rendData=combs.map(g=>(g.km_parcial/parseFloat(g.litros)).toFixed(2));
   if(charts.cxkm) charts.cxkm.destroy();
   charts.cxkm=new Chart(document.getElementById('chart-cxkm'),{
     type:'line',
-    data:{labels:rendLabels.slice(1),datasets:[{data:rendData,borderColor:'#34d399',backgroundColor:'#34d39915',tension:.3,pointRadius:3,fill:true}]},
+    data:{labels:rendLabels,datasets:[{data:rendData,borderColor:'#34d399',backgroundColor:'#34d39915',tension:.3,pointRadius:3,fill:true}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.parsed.y+' km/L'}}},
-      scales:{y:{ticks:{color:'#64748b'},grid:{color:'rgba(148,163,184,.08)'}},x:{ticks:{color:'#64748b',autoSkip:true},grid:{display:false}}}}
+      scales:{y:{ticks:{color:'#64748b'},grid:{color:'rgba(148,163,184,.08)'}},x:{ticks:{color:'#64748b',autoSkip:true,maxRotation:0},grid:{display:false}}}}
+  });
+
+  // 4. Barras apiladas: combustible + mantenimiento por mes
+  const mDataMant=meses.map(m=>Math.round(gastos.filter(g=>g.cat!=='Combustible'&&g.fecha.startsWith(m)).reduce((s,g)=>s+g.importe,0)));
+  if(charts.mensualTotal) charts.mensualTotal.destroy();
+  charts.mensualTotal=new Chart(document.getElementById('chart-mensual-total'),{
+    type:'bar',
+    data:{labels:mLabels,datasets:[
+      {label:'Combustible',data:mDataComb,backgroundColor:'#38bdf860',borderColor:'#38bdf8',borderWidth:1,stack:'s'},
+      {label:'Mantenimiento',data:mDataMant,backgroundColor:'#34d39960',borderColor:'#34d399',borderWidth:1,stack:'s'}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{mode:'index',callbacks:{label:ctx=>ctx.dataset.label+': '+fmt(ctx.parsed.y)}}},
+      scales:{
+        y:{stacked:true,ticks:{color:'#64748b',callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'rgba(148,163,184,.08)'}},
+        x:{stacked:true,ticks:{color:'#64748b',autoSkip:true,maxRotation:0},grid:{display:false}}
+      }}
+  });
+  document.getElementById('legend-mensual').innerHTML=`
+    <span class="legend-item"><span class="legend-dot" style="background:#38bdf8"></span>Combustible</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#34d399"></span>Mantenimiento</span>
+  `;
+
+  // 5. Línea: precio por litro histórico
+  const combsConPrecio=gastos.filter(g=>g.cat==='Combustible'&&g.litros&&g.importe&&parseFloat(g.litros)>0).sort((a,b)=>a.fecha.localeCompare(b.fecha));
+  const precioLabels=combsConPrecio.map(g=>new Date(g.fecha+'T12:00:00').toLocaleDateString('es-AR',{day:'2-digit',month:'short',year:'2-digit'}));
+  const precioData=combsConPrecio.map(g=>Math.round(g.importe/parseFloat(g.litros)));
+  if(charts.precioLitro) charts.precioLitro.destroy();
+  charts.precioLitro=new Chart(document.getElementById('chart-precio-litro'),{
+    type:'line',
+    data:{labels:precioLabels,datasets:[{data:precioData,borderColor:'#fbbf24',backgroundColor:'#fbbf2415',tension:.3,pointRadius:3,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'$'+ctx.parsed.y.toLocaleString('es-AR')+'/L'}}},
+      scales:{y:{ticks:{color:'#64748b',callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'rgba(148,163,184,.08)'}},
+               x:{ticks:{color:'#64748b',autoSkip:true,maxRotation:0},grid:{display:false}}}}
+  });
+
+  // 6. Barras horizontales: ranking categorías
+  const porCatAll={};
+  gastos.forEach(g=>{porCatAll[g.cat]=(porCatAll[g.cat]||0)+g.importe;});
+  const allCats=Object.keys(porCatAll).sort((a,b)=>porCatAll[a]-porCatAll[b]);
+  if(charts.topCats) charts.topCats.destroy();
+  charts.topCats=new Chart(document.getElementById('chart-top-cats'),{
+    type:'bar',
+    data:{labels:allCats,datasets:[{data:allCats.map(c=>Math.round(porCatAll[c])),backgroundColor:allCats.map(c=>CC[c]||'#64748b'),borderWidth:0,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmt(ctx.parsed.x)}}},
+      scales:{x:{ticks:{color:'#64748b',callback:v=>'$'+Math.round(v/1000)+'k'},grid:{color:'rgba(148,163,184,.08)'}},
+               y:{ticks:{color:'#94a3b8',font:{size:11}},grid:{display:false}}}}
   });
 }
 
@@ -505,14 +623,13 @@ function showTab(name,idx){
   document.querySelectorAll('.nav-item')[idx].classList.add('active');
   document.getElementById('scroll-area').scrollTop=0;
   if(name==='graficos') setTimeout(renderGraficos,100);
-  if(name==='historial') renderHistorial();
+  if(name==='historial'){ poblarCatFilters(); renderHistorial(); }
   if(name==='inicio') renderInicio();
 }
 
 function openModal(){
   document.getElementById('modal-overlay').classList.add('open');
-  const url=localStorage.getItem('sheets_url')||'';
-  document.getElementById('sheets-url').value=url;
+  document.getElementById('sheets-url').value=localStorage.getItem('sheets_url')||'';
 }
 function closeModal(){ document.getElementById('modal-overlay').classList.remove('open'); }
 function closeModalOutside(e){ if(e.target===document.getElementById('modal-overlay')) closeModal(); }
