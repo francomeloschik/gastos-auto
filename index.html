@@ -286,9 +286,10 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <label class="form-label" style="margin-bottom:6px">URL del Apps Script Web App</label>
       <input type="url" id="sheets-url" placeholder="https://script.google.com/macros/s/...">
     </div>
-    <button class="modal-btn btn-sheets" onclick="syncSheets()">🔄 Sincronizar con Google Sheets</button>
+    <button class="modal-btn btn-sheets" onclick="syncSheets()">⬆️ Enviar todo a Sheets</button>
+    <button class="modal-btn" style="background:rgba(52,211,153,.15);color:var(--success);border:0.5px solid rgba(52,211,153,.3)" onclick="pullFromSheets()">⬇️ Traer datos desde Sheets</button>
     <div id="sync-status"></div>
-    <div class="sheets-note">Para configurar: abrí Google Sheets → Extensiones → Apps Script → pegá el código del README → Implementar como app web.</div>
+    <div class="sheets-note">Enviar: sube todos tus datos locales a Sheets. Traer: descarga registros nuevos que no tenés en este dispositivo. Al abrir la app se sincroniza automáticamente si hay URL configurada.</div>
     <button class="btn-close" onclick="closeModal()">Cerrar</button>
   </div>
 </div>
@@ -318,6 +319,7 @@ function load(){
   renderInicio();
   poblarAnioFilters();
   poblarCatFilters();
+  autoPullFromSheets();
 }
 
 function updateHdrKm(){
@@ -647,6 +649,61 @@ function importJSON(e){
 
 async function pushToSheets(url, rows){
   await fetch(url,{method:'POST',body:JSON.stringify({action:'append',rows})});
+}
+
+function normalizeEntry(g){
+  const n = v => (v===''||v===null||v===undefined) ? null : v;
+  return {
+    id:       Number(g.id),
+    fecha:    String(g.fecha||''),
+    importe:  Number(g.importe)||0,
+    cat:      String(g.cat||''),
+    km:       g.km ? String(g.km) : null,
+    km_parcial: g.km_parcial ? Number(g.km_parcial) : null,
+    precio_litro: g.precio_litro ? Number(g.precio_litro) : null,
+    prov:     n(g.prov),
+    litros:   g.litros ? String(g.litros) : null,
+    notas:    n(g.notas)
+  };
+}
+
+async function pullFromSheets(){
+  const url = document.getElementById('sheets-url').value.trim() || localStorage.getItem('sheets_url');
+  if(!url){ setStatus('Ingresá la URL del Apps Script','err'); return; }
+  localStorage.setItem('sheets_url', url);
+  setStatus('Descargando desde Sheets...','ok');
+  try{
+    const res = await fetch(url);
+    const imported = await res.json();
+    if(!Array.isArray(imported)) throw new Error('Respuesta inválida');
+    const ids = new Set(gastos.map(g=>g.id));
+    const toAdd = imported
+      .map(normalizeEntry)
+      .filter(g=>g.id && g.fecha && g.cat && g.importe && !ids.has(g.id));
+    if(toAdd.length > 0){
+      gastos = [...gastos, ...toAdd].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+      save(); updateHdrKm(); renderInicio(); poblarAnioFilters(); poblarCatFilters();
+    }
+    setStatus(`✓ ${toAdd.length} registros nuevos importados desde Sheets`, 'ok');
+  }catch(e){ setStatus('No se pudo conectar con Sheets','err'); }
+}
+
+async function autoPullFromSheets(){
+  const url = localStorage.getItem('sheets_url');
+  if(!url) return;
+  try{
+    const res = await fetch(url);
+    const imported = await res.json();
+    if(!Array.isArray(imported)) return;
+    const ids = new Set(gastos.map(g=>g.id));
+    const toAdd = imported
+      .map(normalizeEntry)
+      .filter(g=>g.id && g.fecha && g.cat && g.importe && !ids.has(g.id));
+    if(toAdd.length > 0){
+      gastos = [...gastos, ...toAdd].sort((a,b)=>b.fecha.localeCompare(a.fecha));
+      save(); updateHdrKm(); renderInicio(); poblarAnioFilters(); poblarCatFilters();
+    }
+  }catch(e){}
 }
 
 async function syncSheets(){
